@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* ── Backgrounds ── */
+  --color-base: #0b0f14;
+  --color-base-surface: #111827;
+  --color-base-input: #0f172a;
+  --color-base-hover: #1a2332;
+
+  /* ── Accents ── */
+  --color-neon-green: #00ff9f;
+  --color-neon-green-dim: #00e68a;
+  --color-neon-cyan: #00b7ff;
+
+  /* ── Text ── */
+  --color-content-primary: #e5e7eb;
+  --color-content-muted: #9ca3af;
+  --color-content-danger: #ff4d4d;
+  --color-content-success: #00ff9f;
+
+  /* ── Borders ── */
+  --color-border-default: #1f2937;
+  --color-border-input: #334155;
+
+  /* ── Badges ── */
+  --color-badge-admin: #ff4d4d;
+  --color-badge-mod: #00b7ff;
+  --color-badge-user: #9ca3af;
+
+  /* ── Sections ── */
+  --color-section-leaks: #ff4d4d;
+  --color-section-exploits: #00ff9f;
+  --color-section-marketplace: #00b7ff;
+
+  /* ── Difficulty ── */
+  --color-difficulty-easy: #00ff9f;
+  --color-difficulty-medium: #f59e0b;
+  --color-difficulty-hard: #ff4d4d;
+
+  /* ── Shadows / Glows ── */
+  --shadow-glow-green: 0 0 8px #00ff9f, 0 0 20px rgba(0, 255, 159, 0.3);
+  --shadow-glow-cyan: 0 0 8px #00b7ff, 0 0 20px rgba(0, 183, 255, 0.3);
+  --shadow-glow-red: 0 0 8px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.3);
+
+  /* ── Fonts ── */
+  --font-mono: var(--font-jetbrains-mono), "Consolas", monospace;
+
+  /* ── Animations ── */
+  --animate-blink: blink 1s step-end infinite;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-text-flicker: text-flicker 4s linear infinite;
+  --animate-fade-in-up: fade-in-up 0.4s ease-out forwards;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 4px #00ff9f;
+  }
+  50% {
+    box-shadow:
+      0 0 16px #00ff9f,
+      0 0 32px rgba(0, 255, 159, 0.5);
+  }
+}
+
+@keyframes text-flicker {
+  0%,
+  95%,
+  100% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.4;
+  }
+  97% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
