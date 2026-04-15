@@ -14,8 +14,11 @@ const links = [
 export default function NavBar() {
   const pathname = usePathname();
   return (
-    <nav className="flex justify-between items-center px-6 py-4">
-      <Link href="/" className="flex items-center">
+    <nav className="top-0 z-50 sticky flex justify-between items-center px-6 py-4">
+      <Link
+        href="/"
+        className="flex items-center gap-6 bg-base-surface/60 shadow-glow-green/20 backdrop-blur-sm px-5 py-2 rounded-xl"
+      >
         <Image
           src="/forum-logo.png"
           alt="Hacker Forum logo"
@@ -24,7 +27,7 @@ export default function NavBar() {
           className="w-auto h-20"
         />
       </Link>
-      <div className="flex items-center gap-6 bg-base-surface/60 shadow-glow-green/20 px-5 py-2 rounded-xl">
+      <div className="flex items-center gap-6 bg-base-surface/60 shadow-glow-green/20 backdrop-blur-sm px-5 py-2 rounded-xl">
         {links.map((link) => (
           <Link
             key={link.name}
