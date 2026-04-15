@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
-import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import NavBar from "./ui/navbar";
+import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -23,6 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
+      <Analytics />
       <body
         className={`flex flex-col bg-base text-content-primary min-h-full ${jetbrainsMono.className}`}
       >
