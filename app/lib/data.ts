@@ -16,20 +16,15 @@ const ALLOWED_SORTS: Record<string, { column: string; direction: string }> = {
 };
 
 export async function fetchRecentPosts() {
-  try {
-    const data = await sql<
-      Post[]
-    >`SELECT * FROM posts WHERE id NOT IN (31) ORDER BY created_at DESC LIMIT 10;`;
-    const posts = data.map((post) => ({
-      ...post,
-      created_at: timeAgo(post.created_at),
-      excerpt: truncate(post.content, 150),
-    }));
-    return posts;
-  } catch (error) {
-    console.error("Database error:", error);
-    throw new Error("Failed to fetch recent posts, please try again later.");
-  }
+  const data = await sql<
+    Post[]
+  >`SELECT * FROM posts WHERE id NOT IN (31) ORDER BY created_at DESC LIMIT 10;`;
+  const posts = data.map((post) => ({
+    ...post,
+    created_at: timeAgo(post.created_at),
+    excerpt: truncate(post.content, 150),
+  }));
+  return posts;
 }
 
 export async function fetchFilteredPosts(
