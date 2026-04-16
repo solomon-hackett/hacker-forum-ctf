@@ -3,6 +3,7 @@ export type Post = {
   title: string;
   content: string;
   author: string;
+  author_id: number;
   created_at: string;
 };
 
@@ -12,5 +13,12 @@ export type DisplayPost = {
   content: string;
   excerpt: string;
   author: string;
+  author_id: number;
   created_at: string;
+};
+
+export type User = {
+  it: string;
+  username: string;
+  password: string;
 };

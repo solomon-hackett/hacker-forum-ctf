@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import PageHeading from "../ui/PageHeading";
+import PageHeading from "../ui/page-heading";
 import RecentPosts from "../ui/home/recent-posts";
 import { Suspense } from "react";
 import { CarouselSkeleton } from "@/app/ui/skeletons";
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <main className="flex flex-col justify-center items-center">
+    <main className="flex flex-col justify-center items-center px-10">
       <PageHeading title="GhostNet" />
       <Suspense fallback={<CarouselSkeleton />}>
         <RecentPosts />

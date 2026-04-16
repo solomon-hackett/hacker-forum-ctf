@@ -1,3 +1,5 @@
+"use server";
+
 import { fetchRecentPosts } from "@/app/lib/data";
 import Carousel from "@/app/ui/carousel";
 

@@ -16,15 +16,20 @@ const ALLOWED_SORTS: Record<string, { column: string; direction: string }> = {
 };
 
 export async function fetchRecentPosts() {
-  const data = await sql<
-    Post[]
-  >`SELECT * FROM posts WHERE id NOT IN (31) ORDER BY created_at DESC LIMIT 10;`;
-  const posts = data.map((post) => ({
-    ...post,
-    created_at: timeAgo(post.created_at),
-    excerpt: truncate(post.content, 150),
-  }));
-  return posts;
+  try {
+    const data = await sql<
+      Post[]
+    >`SELECT * FROM posts WHERE id NOT IN (31) ORDER BY created_at DESC LIMIT 10;`;
+    const posts = data.map((post) => ({
+      ...post,
+      created_at: timeAgo(post.created_at),
+      excerpt: truncate(post.content, 150),
+    }));
+    return posts;
+  } catch (error) {
+    console.error("Database error:", error);
+    throw new Error("Failed to fetch recent posts, please try again later.");
+  }
 }
 
 export async function fetchFilteredPosts(
@@ -36,10 +41,16 @@ export async function fetchFilteredPosts(
   const { column, direction } =
     ALLOWED_SORTS[sort] ?? ALLOWED_SORTS["created_at-desc"];
   try {
-    const data = await sql<
-      Post[]
-    >` SELECT * FROM posts WHERE title ILIKE ${`%${query}%`} OR content ILIKE ${`%${query}%`} OR author ILIKE ${`%${query}%`} or created_at ILIKE ${`%${query}%`} ORDER BY ${column} ${direction} LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `;
+    const data = await sql<Post[]>`
+  SELECT * FROM posts
+  WHERE title ILIKE ${`%${query}%`}
+     OR content ILIKE ${`%${query}%`}
+     OR author ILIKE ${`%${query}%`}
+     OR created_at::text ILIKE ${`%${query}%`}
+  ORDER BY ${sql.unsafe(column)} ${sql.unsafe(direction)}
+  LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+  `;
+
     const posts = data.map((post) => ({
       ...post,
       created_at: timeAgo(post.created_at),
