@@ -1,5 +1,3 @@
-// app/api/hash/route.js  (App Router)
-import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 
 export async function GET(request: Request) {
@@ -7,8 +5,8 @@ export async function GET(request: Request) {
   const password = searchParams.get("p");
 
   if (!password) {
-    return NextResponse.json(
-      { error: "Missing required query parameter: p" },
+    return Response.json(
+      { error: "Missing required search param: p" },
       { status: 400 },
     );
   }
@@ -16,5 +14,5 @@ export async function GET(request: Request) {
   const saltRounds = 12;
   const hash = await bcrypt.hash(password, saltRounds);
 
-  return NextResponse.json({ hash });
+  return Response.json({ hash });
 }
