@@ -12,7 +12,12 @@ export async function fetchPosts() {
   users.username AS author_username,
   users.role AS author_role
 FROM posts
-JOIN users ON posts.author = users.id
+JOIN users ON posts.author = users.uid
 ORDER BY posts.created_at DESC;`;
+  return data;
+}
+
+export async function fetchInReview() {
+  const data = await sql<Post[]>`SELECT * FROM posts WHERE in_review = true`;
   return data;
 }
