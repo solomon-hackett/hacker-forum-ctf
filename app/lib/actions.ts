@@ -1,7 +1,10 @@
 "use server";
 
+import postgres from "postgres";
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
+
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 
 export async function authenticate(
   prevState: string | undefined,
@@ -19,5 +22,25 @@ export async function authenticate(
       }
     }
     throw error;
+  }
+}
+
+export async function acceptPostById(id: number) {
+  try {
+    await sql`UPDATE posts SET in_review = false WHERE posts.id = ${id}`;
+    return true;
+  } catch (error) {
+    console.log("Database error: " + error);
+    throw new Error("Error updating database");
+  }
+}
+
+export async function setSuccessfulXXS(id: number) {
+  try {
+    await sql`UPDATE posts SET successful_xss = true WHERE posts.id = ${id}`;
+    return true;
+  } catch (error) {
+    console.log("Database error: " + error);
+    throw new Error("Error updating database");
   }
 }

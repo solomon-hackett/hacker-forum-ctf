@@ -12,7 +12,7 @@ async function getUser(username: string): Promise<User | undefined> {
   try {
     const user = await sql<
       User[]
-    >`SELECT * FROM users WHERE username=${username}`;
+    >`SELECT id, username, password, role FROM users WHERE username=${username}`;
     return user[0];
   } catch (error) {
     console.error("Failed to fetch user:", error);
@@ -36,7 +36,12 @@ export const { auth, signIn, signOut } = NextAuth({
           if (!user) return null;
 
           const passwordsMatch = await bcrypt.compare(password, user.password);
-          if (passwordsMatch) return user;
+          if (passwordsMatch)
+            return {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+            };
         }
 
         console.log("Invalid credentials");
