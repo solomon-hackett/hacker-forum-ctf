@@ -28,7 +28,7 @@ export default function LoginForm() {
               className="block mt-5 mb-3 font-medium text-gray-900 text-xs"
               htmlFor="email"
             >
-              Email
+              Username
             </label>
             <div className="relative">
               <input

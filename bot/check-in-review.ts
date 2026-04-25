@@ -1,7 +1,61 @@
-import { chromium } from "playwright";
+import { chromium, Page, BrowserContext } from "playwright";
+
+const BASE_URL = "http://localhost:3000";
+const POLL_INTERVAL = 3000;
+
+async function getPosts(page: Page) {
+  await page.goto(`${BASE_URL}/in-review`);
+  await page.waitForLoadState("networkidle");
+
+  return await page.$$eval(".post", (els) =>
+    els.map((el) => ({
+      id: el.getAttribute("data-id"),
+    })),
+  );
+}
+
+async function processPost(
+  page: Page,
+  context: BrowserContext,
+  postId: string,
+) {
+  const xssTriggered = { value: false };
+
+  page.removeAllListeners("dialog");
+  page.on("dialog", async (dialog) => {
+    xssTriggered.value = true;
+    await dialog.accept();
+  });
+
+  await page.goto(`${BASE_URL}/in-review`);
+
+  const selector = `[data-id="${postId}"]`;
+
+  try {
+    await page.waitForSelector(selector, { timeout: 5000 });
+    await page.hover(selector);
+    await page.click(selector);
+  } catch {
+    console.log(`Skipping ${postId} (not clickable)`);
+    return;
+  }
+
+  await page.waitForTimeout(300);
+
+  if (xssTriggered.value) {
+    await context.request.get(
+      `${BASE_URL}/api/set-successful-xss?id=${postId}`,
+    );
+    console.log(`XSS detected → ${postId}`);
+  } else {
+    console.log(`Clean post → ${postId}`);
+  }
+
+  await context.request.get(`${BASE_URL}/api/set-allowed?id=${postId}`);
+}
 
 async function main() {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ headless: true });
 
   const context = await browser.newContext({
     storageState: "auth.json",
@@ -9,59 +63,29 @@ async function main() {
 
   const page = await context.newPage();
 
-  let xssTriggered = false;
+  // Track already processed posts
+  const processed = new Set<string>();
 
-  page.on("dialog", async (dialog) => {
-    xssTriggered = true;
-    await dialog.accept();
-  });
+  console.log("CTF bot running...");
 
-  await page.goto("http://localhost:3000/in-review");
-  await page.waitForSelector(".post");
+  while (true) {
+    try {
+      const posts = await getPosts(page);
 
-  const posts = await page.$$eval(".post", (els) =>
-    els.map((el) => ({
-      id: el.getAttribute("data-id"),
-      title: el.querySelector(".post-title")?.textContent?.trim() ?? "",
-      content: el.querySelector(".post-content")?.textContent?.trim() ?? "",
-    })),
-  );
+      for (const post of posts) {
+        if (!post.id) continue;
+        if (processed.has(post.id)) continue;
 
-  console.log(`Found ${posts.length} posts`);
+        processed.add(post.id);
 
-  for (const post of posts) {
-    if (!post.id) continue;
-
-    xssTriggered = false;
-
-    await page.goto("http://localhost:3000/in-review");
-
-    const selector = `[data-id="${post.id}"]`;
-    await page.waitForSelector(selector);
-
-    await page.hover(selector);
-    await page.click(selector);
-
-    await page.waitForTimeout(300);
-
-    if (xssTriggered) {
-      const res = await context.request.get(
-        `http://localhost:3000/api/set-successful-xss?id=${post.id}`,
-      );
-
-      console.log(`Marked XSS → ${res.status()}`);
-    } else {
-      console.log(`No XSS in post ${post.id}`);
+        await processPost(page, context, post.id);
+      }
+    } catch (err) {
+      console.log("Loop error (ignored):", err);
     }
 
-    const allowedRes = await context.request.get(
-      `http://localhost:3000/api/set-allowed?id=${post.id}`,
-    );
-
-    console.log(`Marked allowed → ${allowedRes.status()}`);
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
   }
-
-  await browser.close();
 }
 
 main();
