@@ -1,4 +1,5 @@
 import postgres from "postgres";
+
 import { Post, User } from "./definitions";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });

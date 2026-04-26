@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+
 import PostGrid from "@/app/ui/posts/post-grid";
 
 export const metadata: Metadata = {

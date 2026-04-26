@@ -13,3 +13,8 @@ export type Post = {
   author_username: string;
   author_role: string;
 };
+
+export type SignUpState = {
+  error: string | null;
+  success: boolean;
+};

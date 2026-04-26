@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import NavBar from "@/app/ui/navbar";
 import "./globals.css";
+
+import { JetBrains_Mono } from "next/font/google";
+
 import Footer from "@/app/ui/footer";
+import NavBar from "@/app/ui/navbar";
+import { Analytics } from "@vercel/analytics/next";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],

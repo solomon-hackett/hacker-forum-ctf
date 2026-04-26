@@ -1,10 +1,15 @@
 "use server";
 
-import postgres from "postgres";
-import { signIn } from "@/auth";
+import bcrypt from "bcrypt";
 import { AuthError } from "next-auth";
+import postgres from "postgres";
+
+import { signIn } from "@/auth";
+
+import { SignUpState } from "./definitions";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
+const saltRounds = 10;
 
 export async function authenticate(
   prevState: string | undefined,
@@ -25,8 +30,35 @@ export async function authenticate(
   }
 }
 
-export async function signUp() {
-  return;
+export async function signUp(
+  prevState: SignUpState,
+  formData: FormData,
+): Promise<SignUpState> {
+  const username = formData.get("username") as string;
+  const password = formData.get("password") as string;
+  const repPassword = formData.get("password-rep") as string;
+
+  if (!username || !password || !repPassword) {
+    return { error: "Fatal error: values missing.", success: false };
+  }
+
+  if (password !== repPassword) {
+    return { error: "Passwords do not match.", success: false };
+  }
+
+  try {
+    const hash = await bcrypt.hash(password, saltRounds);
+
+    await sql`
+      INSERT INTO users (username, password)
+      VALUES (${username}, ${hash})
+    `;
+
+    return { error: null, success: true };
+  } catch (err) {
+    console.log(err);
+    return { error: "Sign up failed, please try again later.", success: false };
+  }
 }
 
 export async function acceptPostById(id: number) {
