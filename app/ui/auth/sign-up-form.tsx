@@ -26,10 +26,10 @@ export default function SignUpForm() {
   const router = useRouter();
 
   useEffect(() => {
-    if (state.success) {
-      router.push("/auth/login");
+    if (!isPending && state.success) {
+      router.replace("/auth/login");
     }
-  }, [state.success, router]);
+  }, [state.success, isPending, router]);
 
   const lastRequestId = useRef(0);
 
