@@ -50,7 +50,11 @@ export const authConfig = {
         return isLoggedIn;
       }
 
-      if (isLoggedIn && nextUrl.pathname === "/auth/login") {
+      if (
+        isLoggedIn &&
+        (nextUrl.pathname === "/auth/login" ||
+          nextUrl.pathname === "/auth/sign-up")
+      ) {
         return NextResponse.redirect(new URL("/account", nextUrl));
       }
 
