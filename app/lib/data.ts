@@ -33,6 +33,7 @@ export async function fetchPostById(id: number) {
 }
 
 export async function fetchInReview() {
+  console.log("RUNNING QUERY", new Date().toISOString());
   const data = await sql<
     Post[]
   >`SELECT posts.id, posts.title, posts.content FROM posts WHERE in_review = true`;
