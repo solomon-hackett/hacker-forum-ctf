@@ -25,6 +25,10 @@ export async function authenticate(
   }
 }
 
+export async function signUp() {
+  return;
+}
+
 export async function acceptPostById(id: number) {
   try {
     await sql`UPDATE posts SET in_review = false WHERE posts.id = ${id}`;
@@ -43,4 +47,14 @@ export async function setSuccessfulXXS(id: number) {
     console.log("Database error: " + error);
     throw new Error("Error updating database");
   }
+}
+
+export async function checkUsernameExists(username: string) {
+  const data = await sql<{ exists: boolean }[]>`
+    SELECT EXISTS(
+      SELECT 1 FROM users WHERE username = ${username}
+    ) AS exists;
+  `;
+
+  return data[0].exists;
 }

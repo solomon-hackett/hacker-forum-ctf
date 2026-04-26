@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { Post } from "./definitions";
+import { Post, User } from "./definitions";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 
@@ -16,6 +16,10 @@ export async function fetchPosts() {
   WHERE in_review = false and public = true
   ORDER BY posts.created_at DESC;`;
   return data;
+}
+
+export async function fetchUserPosts(id: string) {
+  return id;
 }
 
 export async function fetchPostById(id: number) {
@@ -38,4 +42,9 @@ export async function fetchInReview() {
     Post[]
   >`SELECT posts.id, posts.title, posts.content FROM posts WHERE in_review = true`;
   return data;
+}
+
+export async function fetchUserById(id: string) {
+  const data = await sql<User[]>`SELECT * FROM users WHERE users.id = ${id}`;
+  return data[0];
 }

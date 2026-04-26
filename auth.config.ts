@@ -14,22 +14,35 @@ export const authConfig = {
       const isProtected =
         nextUrl.pathname.startsWith("/account") ||
         nextUrl.pathname.startsWith("/posts/create") ||
-        nextUrl.pathname.startsWith("/api") ||
+        nextUrl.pathname.startsWith("/api/set-allowed") ||
+        nextUrl.pathname.startsWith("/api/set-successful-xss") ||
+        nextUrl.pathname.startsWith("/api/env") ||
+        nextUrl.pathname.startsWith("/in-review");
+
+      const isSystemRoute =
+        nextUrl.pathname.startsWith("/api/set-allowed") ||
+        nextUrl.pathname.startsWith("/api/set-successful-xss") ||
         nextUrl.pathname.startsWith("/in-review");
 
       const isAdminRoute =
-        nextUrl.pathname.startsWith("/api") ||
-        nextUrl.pathname.startsWith("/in-review");
+        nextUrl.pathname.startsWith("/api/env") && !isSystemRoute;
 
       const REQUIRED_UUID = process.env.SYSTEM_UUID;
 
-      if (isAdminRoute) {
-        if (!isLoggedIn) return false;
-
+      if (isSystemRoute) {
         if (user?.id !== REQUIRED_UUID) {
-          return new Response("Forbidden", { status: 403 });
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
+        return true;
+      }
+      if (isAdminRoute) {
+        if (user?.role !== "admin") {
+          return NextResponse.json(
+            { error: "You must be an admin to access this resource." },
+            { status: 401 },
+          );
+        }
         return true;
       }
 
@@ -46,6 +59,7 @@ export const authConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = user.role;
       }
       return token;
     },
@@ -53,6 +67,7 @@ export const authConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.role = token.role as string;
       }
       return session;
     },

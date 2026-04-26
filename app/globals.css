@@ -124,3 +124,21 @@
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }
+
+.sign-up-input {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "dialogue dialogue"
+    "label input";
+}
+.dialogue {
+  grid-area: dialogue;
+}
+.label {
+  grid-area: label;
+}
+.input {
+  grid-area: input;
+}
