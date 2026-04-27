@@ -30,11 +30,13 @@ export async function fetchUserPosts(id: string) {
   posts.title,
   posts.content,
   posts.created_at,
+  posts.public,
+  posts.successful_xss,
   users.username AS author_username,
   users.role AS author_role
   FROM posts
   JOIN users ON posts.author = users.id
-  WHERE posts.author = ${id};`;
+  WHERE posts.author = ${id} AND posts.in_review = false;`;
   const posts = data.map((post) => ({
     ...post,
     created_at: generatePrettyDate(post.created_at),
@@ -80,7 +82,6 @@ export async function fetchNewPosts() {
 }
 
 export async function fetchInReview() {
-  console.log("RUNNING QUERY", new Date().toISOString());
   const data = await sql<
     Post[]
   >`SELECT posts.id, posts.title, posts.content FROM posts WHERE in_review = true`;

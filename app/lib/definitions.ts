@@ -12,6 +12,9 @@ export type Post = {
   created_at: string;
   author_username: string;
   author_role: string;
+  in_review: boolean;
+  public: boolean;
+  successful_xss: boolean;
 };
 
 export type SignUpState = {

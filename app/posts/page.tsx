@@ -1,8 +1,7 @@
 import { Metadata } from "next";
 
+import PageHeading from "@/app/ui/page-heading";
 import PostGrid from "@/app/ui/posts/post-grid";
-
-import PageHeading from "../ui/page-heading";
 
 export const metadata: Metadata = {
   title: "Posts",

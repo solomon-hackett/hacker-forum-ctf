@@ -14,7 +14,10 @@ export default async function Page() {
     <div>
       <PageHeading heading="Your posts" />
       {!isAdmin && (
-        <Link href="/posts/create" className="flex items-center">
+        <Link
+          href="/posts/create?redirect=/account/posts"
+          className="flex items-center"
+        >
           <PlusCircleIcon className="w-5 h-5" />
           Create Post
         </Link>

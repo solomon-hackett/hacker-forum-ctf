@@ -2,6 +2,8 @@
 
 import bcrypt from "bcrypt";
 import { AuthError } from "next-auth";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import postgres from "postgres";
 
 import { signIn, signOut } from "@/auth";
@@ -74,6 +76,9 @@ export async function acceptPostById(id: number) {
 export async function setSuccessfulXXS(id: number) {
   try {
     await sql`UPDATE posts SET successful_xss = true WHERE posts.id = ${id}`;
+    revalidatePath("/account/posts");
+    revalidatePath("/posts");
+    revalidatePath("/in-review");
     return true;
   } catch (error) {
     console.log("Database error: " + error);
@@ -96,5 +101,20 @@ export async function handleSignOut() {
 }
 
 export async function createPost(formData: FormData) {
-  console.log(formData);
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
+  const visibility = formData.get("public") === "true";
+  const author = formData.get("author") as string;
+  const redirectUrl = formData.get("redirect") as string;
+
+  try {
+    await sql`INSERT INTO posts (title, content, "public", author) VALUES (${title}, ${content}, ${visibility}, ${author});`;
+    revalidatePath("/account/posts");
+    revalidatePath("/posts");
+    revalidatePath("/in-review");
+  } catch (err) {
+    console.log("Database error:", err);
+    throw new Error("Failed to create post.");
+  }
+  redirect(redirectUrl);
 }

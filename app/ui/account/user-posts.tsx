@@ -1,9 +1,9 @@
 import { fetchUserPosts } from "@/app/lib/data";
 
+import { XssCard } from "./xss-card";
+
 export default async function UserPosts({ id }: { id: string }) {
   const posts = await fetchUserPosts(id);
-  console.log("posts:", posts);
-  console.log("isArray:", Array.isArray(posts));
   return (
     <>
       <style>{`
@@ -182,8 +182,10 @@ export default async function UserPosts({ id }: { id: string }) {
             const initials = post.author_username
               ? post.author_username.slice(0, 2).toUpperCase()
               : "??";
-
-            return (
+            const isXss = post.successful_xss && !post.public;
+            return isXss ? (
+              <XssCard key={post.id} />
+            ) : (
               <div key={post.id} className="post-card">
                 <div className="post-header">
                   <h2 className="post-title">{post.title}</h2>
