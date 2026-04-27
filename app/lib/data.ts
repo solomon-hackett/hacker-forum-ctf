@@ -25,7 +25,21 @@ export async function fetchPosts() {
 }
 
 export async function fetchUserPosts(id: string) {
-  return id;
+  const data = await sql<Post[]>`SELECT 
+  posts.id,
+  posts.title,
+  posts.content,
+  posts.created_at,
+  users.username AS author_username,
+  users.role AS author_role
+  FROM posts
+  JOIN users ON posts.author = users.id
+  WHERE posts.author = ${id};`;
+  const posts = data.map((post) => ({
+    ...post,
+    created_at: generatePrettyDate(post.created_at),
+  }));
+  return posts;
 }
 
 export async function fetchPostById(id: string) {

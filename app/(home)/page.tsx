@@ -18,7 +18,7 @@ export default function Page() {
         id="comments"
         dangerouslySetInnerHTML={{
           __html:
-            "<!-- Dev comment: flag1{K7mR2pX9nQ} the admin account has a weak password, we should probably change that. We currently don't sanitise the private posts, should probably fix that, additionally, they are displayed without being escaped on the user's page. -->",
+            "<!-- Dev comment: flag1{K7mR2pX9nQ} the admin account has a weak password, we should probably change that. We currently don't sanitise the private posts, should probably fix that, additionally, they are displayed without being escaped on the user's page. !IMPORTANT: remove before deployment! Use /api/env to get the environment variables. -->",
         }}
       />
     </main>

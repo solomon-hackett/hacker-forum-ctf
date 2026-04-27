@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { AuthError } from "next-auth";
 import postgres from "postgres";
 
-import { signIn } from "@/auth";
+import { signIn, signOut } from "@/auth";
 
 import { SignUpState } from "./definitions";
 
@@ -89,4 +89,12 @@ export async function checkUsernameExists(username: string) {
   `;
 
   return data[0].exists;
+}
+
+export async function handleSignOut() {
+  await signOut({ redirectTo: "/" });
+}
+
+export async function createPost(formData: FormData) {
+  console.log(formData);
 }

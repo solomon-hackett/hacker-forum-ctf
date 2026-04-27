@@ -25,7 +25,9 @@ export const authConfig = {
         nextUrl.pathname.startsWith("/in-review");
 
       const isAdminRoute =
-        nextUrl.pathname.startsWith("/api/env") && !isSystemRoute;
+        (nextUrl.pathname.startsWith("/api/env") ||
+          nextUrl.pathname.startsWith("/admin")) &&
+        !isSystemRoute;
 
       const REQUIRED_UUID = process.env.SYSTEM_UUID;
 

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <main>
+    <main className="flex flex-col justify-center items-center">
       <PageHeading heading="Posts" />
       <PostGrid />
     </main>
