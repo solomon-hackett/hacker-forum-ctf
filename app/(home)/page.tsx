@@ -1,4 +1,8 @@
 import { Metadata } from "next";
+import Link from "next/link";
+
+import NewPostsCarousel from "../ui/home/new-posts";
+import PageHeading from "../ui/page-heading";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -7,6 +11,9 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <main className="flex flex-col justify-center items-center px-10">
+      <PageHeading heading="Welcome to GhostNet" />
+      <NewPostsCarousel />
+      <Link href="/posts">View More</Link>
       <div
         id="comments"
         dangerouslySetInnerHTML={{
