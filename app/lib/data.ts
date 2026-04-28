@@ -1,6 +1,6 @@
 import postgres from "postgres";
 
-import { Post, User } from "./definitions";
+import { Notification, Post, User } from "./definitions";
 import { generatePrettyDate } from "./utils";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
@@ -91,4 +91,25 @@ export async function fetchInReview() {
 export async function fetchUserById(id: string) {
   const data = await sql<User[]>`SELECT * FROM users WHERE users.id = ${id}`;
   return data[0];
+}
+
+export async function fetchNotifications(id: string, role: string) {
+  const data = await sql<Notification[]>`
+    SELECT *
+    FROM notifications
+    WHERE notifications.user_id = ${id}
+    AND (
+      ${role} = 'admin'
+      OR notifications.is_read = false
+      OR notifications.created_at >= NOW() - INTERVAL '3 weeks'
+    )
+    ORDER BY notifications.created_at DESC;
+  `;
+
+  const notifications = data.map((n) => ({
+    ...n,
+    created_at: generatePrettyDate(n.created_at),
+  }));
+
+  return notifications;
 }

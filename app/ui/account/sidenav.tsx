@@ -1,14 +1,20 @@
 "use client";
 
-import clsx from 'clsx';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import clsx from "clsx";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-import { handleSignOut } from '@/app/lib/actions';
+import { handleSignOut } from "@/app/lib/actions";
 import {
-    ArrowLeftStartOnRectangleIcon, Bars3Icon, DocumentTextIcon, ShieldCheckIcon, UserIcon
-} from '@heroicons/react/24/solid';
+  ArrowLeftStartOnRectangleIcon,
+  Bars3Icon,
+  DocumentTextIcon,
+  ShieldCheckIcon,
+  UserIcon,
+} from "@heroicons/react/24/solid";
+
+import NotificationTray from "./notification-tray";
 
 const links = [
   { href: "/account", name: "Your Account", icon: UserIcon },
@@ -187,7 +193,6 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
       `}</style>
 
       <aside className={clsx("sidenav", { collapsed })}>
-        <div className="spacer"></div>
         {/* Collapse toggle */}
         <button
           className="sidenav-toggle"

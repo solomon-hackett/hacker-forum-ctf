@@ -1,14 +1,14 @@
 "use server";
 
-import bcrypt from 'bcrypt';
-import { AuthError } from 'next-auth';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import postgres from 'postgres';
+import bcrypt from "bcrypt";
+import { AuthError } from "next-auth";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import postgres from "postgres";
 
-import { signIn, signOut } from '@/auth';
+import { signIn, signOut } from "@/auth";
 
-import { SignUpState } from './definitions';
+import { SignUpState } from "./definitions";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 const saltRounds = 10;
@@ -122,4 +122,19 @@ export async function createPost(formData: FormData) {
     throw new Error("Failed to create post.");
   }
   redirect(redirectUrl);
+}
+
+export async function markNotisAsRead(userId: string) {
+  if (!userId) return;
+
+  try {
+    await sql`
+      UPDATE notifications
+      SET is_read = true
+      WHERE user_id = ${userId}
+    `;
+  } catch (error) {
+    console.error("Failed to mark notifications as read:", error);
+    throw new Error("Could not update notifications");
+  }
 }

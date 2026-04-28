@@ -21,3 +21,12 @@ export type SignUpState = {
   error: string | null;
   success: boolean;
 };
+
+export type Notification = {
+  id: number;
+  user_id: string;
+  title: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+};
