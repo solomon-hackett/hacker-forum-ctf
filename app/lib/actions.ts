@@ -58,7 +58,7 @@ export async function signUp(
     `;
     const id = result[0].id;
 
-    await sql`INSERT INTO notifications (user_id, title, content) VALUES (${id}, "Welcome to GhostNet", "Welcome to GhostNet ${username} we hope you enjoy your time here");`;
+    await sql`INSERT INTO notifications (user_id, title, content) VALUES (${id}, 'Welcome to GhostNet', ${"Welcome to GhostNet " + username + " we hope you enjoy your time here"});`;
     revalidatePath("/account");
 
     return { error: null, success: true };

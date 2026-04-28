@@ -1,5 +1,12 @@
-import SideNav from "@/app/ui/account/sidenav";
-import { auth } from "@/auth";
+import { Metadata } from 'next';
+
+import SideNav from '@/app/ui/account/sidenav';
+import { auth } from '@/auth';
+
+export const metadata: Metadata = {
+  title: "Your posts",
+  description: "View your GhostNet posts.",
+};
 
 export default async function Layout({
   children,
@@ -8,12 +15,34 @@ export default async function Layout({
 }>) {
   const session = await auth();
   const role = session?.user?.role;
-  let isAdmin = false;
-  if (role === "admin") isAdmin = true;
+  const isAdmin = role === "admin";
+
   return (
-    <main className="flex w-screen">
-      <SideNav isAdmin={isAdmin} />
-      {children}
-    </main>
+    <>
+      <style>{`
+        .account-layout {
+          display: flex;
+          min-height: 100vh;
+        }
+        .account-sidebar-offset {
+          /* matches sidenav expanded width */
+          width: 220px;
+          flex-shrink: 0;
+          transition: width 0.25s ease;
+        }
+        .account-content {
+          flex: 1;
+          min-width: 0;
+          padding: 2rem;
+        }
+      `}</style>
+
+      <div className="account-layout">
+        <SideNav isAdmin={isAdmin} />
+        {/* Spacer div that mirrors the fixed sidenav width */}
+        <div className="account-sidebar-offset" />
+        <main className="account-content">{children}</main>
+      </div>
+    </>
   );
 }
