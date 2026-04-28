@@ -1,7 +1,9 @@
-import { Metadata } from 'next';
+import { Metadata } from "next";
+import { Suspense } from "react";
 
-import Form from '@/app/ui/posts/create-form';
-import { auth } from '@/auth';
+import Form from "@/app/ui/posts/create-form";
+import { CreateSkeleton } from "@/app/ui/skeletons";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Create a Post",
@@ -19,8 +21,19 @@ export default async function Page(props: {
   const redirect = searchParams?.redirect || "/posts";
 
   return (
-    <main className="flex flex-col justify-center items-center">
-      <Form id={id} redirect={redirect} />
+    <main
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "2rem 1rem",
+        background: "#0d0f14",
+      }}
+    >
+      <Suspense fallback={<CreateSkeleton />}>
+        <Form id={id} redirect={redirect} />
+      </Suspense>
     </main>
   );
 }

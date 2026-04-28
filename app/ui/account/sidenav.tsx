@@ -14,14 +14,14 @@ import {
   UserIcon,
 } from "@heroicons/react/24/solid";
 
-import NotificationTray from "./notification-tray";
-
 const links = [
   { href: "/account", name: "Your Account", icon: UserIcon },
   { href: "/account/posts", name: "Your Posts", icon: DocumentTextIcon },
 ];
 
-const adminLinks = [{ href: "/admin", name: "Admin", icon: ShieldCheckIcon }];
+const adminLinks = [
+  { href: "/account/admin", name: "Admin", icon: ShieldCheckIcon },
+];
 
 export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();

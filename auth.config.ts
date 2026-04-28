@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export const authConfig = {
   pages: {
@@ -26,7 +26,7 @@ export const authConfig = {
 
       const isAdminRoute =
         (nextUrl.pathname.startsWith("/api/env") ||
-          nextUrl.pathname.startsWith("/admin")) &&
+          nextUrl.pathname.startsWith("/account/admin")) &&
         !isSystemRoute;
 
       const REQUIRED_UUID = process.env.SYSTEM_UUID;

@@ -50,6 +50,7 @@ export async function fetchPostById(id: string) {
   posts.title,
   posts.content,
   posts.created_at,
+  posts.public,
   users.username AS author_username,
   users.role AS author_role
   FROM posts
@@ -71,7 +72,7 @@ export async function fetchNewPosts() {
   users.role AS author_role
   FROM posts
   JOIN users ON posts.author = users.id
-  WHERE posts.id != 71
+  WHERE posts.id != 71 AND posts.public = true
   ORDER BY created_at DESC
   LIMIT 10;`;
   const posts = data.map((post) => ({

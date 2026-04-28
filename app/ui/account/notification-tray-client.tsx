@@ -20,6 +20,7 @@ export default function NotificationTrayClient({
   const [isOpen, setIsOpen] = useState(false);
   const [localNotifs, setLocalNotifs] = useState(notifications);
   const [isPending, startTransition] = useTransition();
+  const hasUnread = localNotifs.some((n) => !n.is_read);
 
   const markAllAsRead = () => {
     if (!id) return;
@@ -186,11 +187,28 @@ export default function NotificationTrayClient({
 
       <div className="notif-wrapper">
         <button className="notif-btn" onClick={() => setIsOpen((p) => !p)}>
-          {isOpen ? (
-            <XMarkIcon className="w-5 h-5" />
-          ) : (
-            <InboxIcon className="w-5 h-5" />
-          )}
+          <div style={{ position: "relative" }}>
+            {isOpen ? (
+              <XMarkIcon className="w-5 h-5" />
+            ) : (
+              <InboxIcon className="w-5 h-5" />
+            )}
+
+            {hasUnread && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  boxShadow: "0 0 0 2px #13151c",
+                }}
+              />
+            )}
+          </div>
         </button>
 
         <div className={`notif-panel ${isOpen ? "open" : ""}`}>

@@ -7,7 +7,7 @@ export function XssCard() {
   useEffect(() => {
     if (ref.current) {
       const script = document.createElement("script");
-      script.textContent = `alert("flag{Z9fL2qX7wA}")`;
+      script.textContent = `alert("flag7{Z9fL2qX7wA}")`;
       ref.current.appendChild(script);
     }
   }, []);

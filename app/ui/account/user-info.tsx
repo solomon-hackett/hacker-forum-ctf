@@ -13,7 +13,9 @@ export default async function UserInfo({ id }: { id: string }) {
         </p>
 
         {user.role === "admin" && (
-          <p className="text-red-500">You have elevated privileges.</p>
+          <>
+            <p className="text-red-500">You have elevated privileges.</p>
+          </>
         )}
       </div>
     </div>

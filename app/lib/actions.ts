@@ -8,7 +8,7 @@ import postgres from "postgres";
 
 import { signIn, signOut } from "@/auth";
 
-import { SignUpState } from "./definitions";
+import { Post, SignUpState } from "./definitions";
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 const saltRounds = 10;
@@ -58,7 +58,7 @@ export async function signUp(
     `;
     const id = result[0].id;
 
-    await sql`INSERT INTO notifications (user_id, title, content) VALUES (${id}, 'Welcome to GhostNet', ${"Welcome to GhostNet " + username + " we hope you enjoy your time here"});`;
+    await sql`INSERT INTO notifications (user_id, title, content) VALUES (${id}, 'Welcome to GhostNet', ${"Welcome to GhostNet, " + username + ", we hope you enjoy your time here"});`;
     revalidatePath("/account");
 
     return { error: null, success: true };
@@ -117,11 +117,55 @@ export async function createPost(formData: FormData) {
     revalidatePath("/account/posts");
     revalidatePath("/posts");
     revalidatePath("/in-review");
-  } catch (err) {
-    console.log("Database error:", err);
+    revalidatePath("/");
+  } catch (error) {
+    console.log("Database error:", error);
     throw new Error("Failed to create post.");
   }
   redirect(redirectUrl);
+}
+
+export async function updatePost(
+  prevState: string | null,
+  formData: FormData,
+): Promise<string | null> {
+  const id = formData.get("postId") as string;
+  const author = formData.get("author") as string;
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
+  const isPublic = formData.get("public") as string;
+
+  const data = await sql<Post[]>`SELECT * FROM posts WHERE id = ${id}`;
+  const postToUpdate = data[0];
+
+  if (!postToUpdate) return "Post not found.";
+  if (postToUpdate.author !== author)
+    return "You cannot edit other user's posts.";
+
+  try {
+    await sql`UPDATE posts SET title=${title}, content=${content}, public=${isPublic}, in_review=true WHERE id=${id}`;
+    revalidatePath("/account/posts");
+    revalidatePath("/posts");
+    revalidatePath("/in-review");
+    revalidatePath("/");
+    return "ok";
+  } catch (error) {
+    console.log("Database error:", error);
+    return "Failed to update post.";
+  }
+}
+
+export async function deletePost(id: number) {
+  try {
+    await sql`DELETE FROM posts WHERE id = ${id}`;
+    revalidatePath("/posts");
+    revalidatePath("/account/posts");
+    revalidatePath("/in-review");
+    revalidatePath("/");
+  } catch (error) {
+    console.log("Database error:" + error);
+    throw new Error("Failed to delete post.");
+  }
 }
 
 export async function markNotisAsRead(userId: string) {
@@ -136,17 +180,5 @@ export async function markNotisAsRead(userId: string) {
   } catch (error) {
     console.error("Failed to mark notifications as read:", error);
     throw new Error("Could not update notifications");
-  }
-}
-
-export async function deletePost(id: number) {
-  try {
-    await sql`DELETE FROM posts WHERE id = ${id}`;
-    revalidatePath("/posts");
-    revalidatePath("/account/posts");
-    revalidatePath("/in-review");
-  } catch (error) {
-    console.log("Database error:" + error);
-    throw new Error("Failed to delete post.");
   }
 }

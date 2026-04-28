@@ -10,6 +10,7 @@ export type Post = {
   title: string;
   content: string;
   created_at: string;
+  author: string;
   author_username: string;
   author_role: string;
   in_review: boolean;
