@@ -1,14 +1,14 @@
 "use server";
 
-import bcrypt from "bcrypt";
-import { AuthError } from "next-auth";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import postgres from "postgres";
+import bcrypt from 'bcrypt';
+import { AuthError } from 'next-auth';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import postgres from 'postgres';
 
-import { signIn, signOut } from "@/auth";
+import { signIn, signOut } from '@/auth';
 
-import { SignUpState } from "./definitions";
+import { SignUpState } from './definitions';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 const saltRounds = 10;
@@ -51,10 +51,15 @@ export async function signUp(
   try {
     const hash = await bcrypt.hash(password, saltRounds);
 
-    await sql`
+    const result = await sql`
       INSERT INTO users (username, password)
       VALUES (${username}, ${hash})
+      RETURNING id
     `;
+    const id = result[0].id;
+
+    await sql`INSERT INTO notifications (user_id, title, content) VALUES (${id}, "Welcome to GhostNet", "Welcome to GhostNet ${username} we hope you enjoy your time here");`;
+    revalidatePath("/account");
 
     return { error: null, success: true };
   } catch (err) {
