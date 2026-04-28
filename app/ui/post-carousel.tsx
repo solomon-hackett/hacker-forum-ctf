@@ -1,16 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Post } from "@/app/lib/definitions";
 
-const CLONE_COUNT = 3;
+const BASE_CLONES = 3;
 
 export default function Carousel({ posts }: { posts: Post[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const isJumping = useRef(false);
+
   const total = posts.length;
+  const CLONE_COUNT = Math.min(BASE_CLONES, total);
 
   const allPosts = [
     ...posts.slice(-CLONE_COUNT),
@@ -19,35 +22,31 @@ export default function Carousel({ posts }: { posts: Post[] }) {
   ];
 
   const cardWidth = useCallback(() => {
-    const card = scrollRef.current?.children[0] as HTMLElement | undefined;
-    if (!card) return 296; // 280px card + 16px gap
-    const gap = parseInt(getComputedStyle(scrollRef.current!).gap) || 16;
+    const container = scrollRef.current;
+    const card = container?.children[0] as HTMLElement | undefined;
+    if (!container || !card) return 296;
+    const styles = getComputedStyle(container);
+    const gap = parseInt(styles.gap || styles.columnGap || "16") || 16;
     return card.offsetWidth + gap;
   }, []);
 
-  // Init: only touch the DOM, no setState (activeIndex already defaults to 0)
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
     container.scrollLeft = CLONE_COUNT * cardWidth();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [CLONE_COUNT, cardWidth]);
 
-  // Teleport helper: disable snap → set scrollLeft → re-enable snap next frame
-  const teleport = useCallback(
-    (container: HTMLElement, targetScrollLeft: number) => {
-      container.style.scrollSnapType = "none";
-      container.scrollLeft = targetScrollLeft;
-      // Re-enable snap after the browser has painted the new position
+  const teleport = useCallback((container: HTMLDivElement, target: number) => {
+    container.style.scrollSnapType = "none";
+    container.scrollLeft = target;
+    requestAnimationFrame(() => {
+      container.style.scrollSnapType = "";
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          container.style.scrollSnapType = "";
-        });
+        isJumping.current = false;
       });
-    },
-    [],
-  );
+    });
+  }, []);
 
-  // Infinite scroll handler: debounced, async — setState in callback is fine
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -58,26 +57,21 @@ export default function Carousel({ posts }: { posts: Post[] }) {
       if (isJumping.current) return;
       clearTimeout(debounce);
       debounce = setTimeout(() => {
+        const el = scrollRef.current;
+        if (!el) return;
         const cw = cardWidth();
-        const idx = Math.round(container!.scrollLeft / cw);
+        const idx = Math.floor((el.scrollLeft + cw / 2) / cw);
         const realIdx = idx - CLONE_COUNT;
-
         if (realIdx < 0) {
           isJumping.current = true;
           const corrected = realIdx + total;
-          teleport(container!, (corrected + CLONE_COUNT) * cw);
+          teleport(el, (corrected + CLONE_COUNT) * cw);
           setActiveIndex(corrected);
-          setTimeout(() => {
-            isJumping.current = false;
-          }, 100);
         } else if (realIdx >= total) {
           isJumping.current = true;
           const corrected = realIdx - total;
-          teleport(container!, (corrected + CLONE_COUNT) * cw);
+          teleport(el, (corrected + CLONE_COUNT) * cw);
           setActiveIndex(corrected);
-          setTimeout(() => {
-            isJumping.current = false;
-          }, 100);
         } else {
           setActiveIndex(realIdx);
         }
@@ -89,7 +83,7 @@ export default function Carousel({ posts }: { posts: Post[] }) {
       container.removeEventListener("scroll", onScroll);
       clearTimeout(debounce);
     };
-  }, [cardWidth, teleport, total]);
+  }, [cardWidth, teleport, total, CLONE_COUNT]);
 
   const scrollToReal = useCallback(
     (realIndex: number) => {
@@ -101,7 +95,7 @@ export default function Carousel({ posts }: { posts: Post[] }) {
       });
       setActiveIndex(realIndex);
     },
-    [cardWidth],
+    [CLONE_COUNT, cardWidth],
   );
 
   function scrollBy(dir: number) {
@@ -117,16 +111,14 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           font-family: 'Sora', sans-serif;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-          padding: 0.5rem 0 1rem;
-          max-width: 80vw;
+          gap: 1.25rem;
+          padding: 0.25rem 0 0.75rem;
         }
 
         .carousel-row {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          padding: 0 1.5rem;
         }
 
         .carousel-btn {
@@ -141,33 +133,34 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
           font-size: 0.85rem;
+          transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
         }
         .carousel-btn:hover {
-          border-color: #7c6dfa;
+          border-color: #3d4155;
           color: #e8eaf2;
-          box-shadow: 0 0 12px rgba(124, 109, 250, 0.2);
+          box-shadow: 0 8px 32px rgba(0,0,0,.4);
         }
 
         .carousel-track-wrap {
           flex: 1;
           overflow: hidden;
+          padding: 6px 0 8px;
+          margin: -6px 0 -8px;
+          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
         }
 
         .carousel-track {
           display: flex;
-          flex-direction: row;
           gap: 1rem;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
           scrollbar-width: none;
           -ms-overflow-style: none;
-          height: 
+          padding: 2px 0 4px;
         }
-        .carousel-track::-webkit-scrollbar {
-          display: none;
-        }
+        .carousel-track::-webkit-scrollbar { display: none; }
 
         .carousel-card {
           background: #13151c;
@@ -177,41 +170,44 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
-          position: relative;
-          overflow: hidden;
-          transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
           min-width: 280px;
           max-width: 280px;
           flex-shrink: 0;
           scroll-snap-align: start;
+          text-decoration: none;
+          position: relative;
+          overflow: hidden;
+          transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+          cursor: pointer;
         }
         .carousel-card::before {
           content: '';
           position: absolute;
-          top: -40px;
-          right: -40px;
-          width: 120px;
-          height: 120px;
-          background: radial-gradient(circle, rgba(124, 109, 250, 0.07) 0%, transparent 70%);
+          top: -40px; right: -40px;
+          width: 120px; height: 120px;
+          background: radial-gradient(circle, rgba(124,109,250,.07) 0%, transparent 70%);
           pointer-events: none;
-          opacity: 0;
           transition: opacity 0.3s;
+          opacity: 0;
         }
         .carousel-card:hover {
           border-color: #3d4155;
           transform: translateY(-2px);
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+          box-shadow: 0 8px 32px rgba(0,0,0,.4);
         }
         .carousel-card:hover::before {
           opacity: 1;
         }
 
-        .carousel-header {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 0.5rem;
+        .carousel-tag {
+          font-family: 'DM Mono', monospace;
+          font-size: 0.62rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #6b7091;
+          width: fit-content;
         }
+
         .carousel-title {
           font-size: 0.95rem;
           font-weight: 600;
@@ -219,67 +215,6 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           letter-spacing: -0.01em;
           line-height: 1.4;
           margin: 0;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .carousel-date {
-          font-family: 'DM Mono', monospace;
-          font-size: 0.65rem;
-          color: #6b7091;
-          white-space: nowrap;
-          padding-top: 2px;
-          flex-shrink: 0;
-        }
-
-        .carousel-author {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-        .carousel-avatar {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, rgba(124, 109, 250, 0.3), rgba(91, 156, 246, 0.3));
-          border: 1px solid rgba(124, 109, 250, 0.25);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.6rem;
-          font-weight: 600;
-          color: #a99df5;
-          flex-shrink: 0;
-        }
-        .carousel-username {
-          font-size: 0.78rem;
-          font-weight: 500;
-          color: #a99df5;
-        }
-        .carousel-role {
-          font-family: 'DM Mono', monospace;
-          font-size: 0.62rem;
-          border-radius: 6px;
-          padding: 2px 7px;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
-        .post-role-member {
-          color: #888780;
-          background: rgba(136, 135, 128, 0.1);
-          border: 1px solid rgba(136, 135, 128, 0.2);
-        }
-        .post-role-moderator {
-          color: #ef9f27;
-          background: rgba(239, 159, 39, 0.1);
-          border: 1px solid rgba(239, 159, 39, 0.2);
-        }
-        .post-role-admin {
-          color: #f09595;
-          background: rgba(240, 149, 149, 0.1);
-          border: 1px solid rgba(240, 149, 149, 0.2);
         }
 
         .carousel-divider {
@@ -288,24 +223,27 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           border: none;
           margin: 0;
         }
+
         .carousel-content {
-          font-size: 0.8rem;
+          font-size: 0.82rem;
           color: #9096b8;
           line-height: 1.7;
           font-weight: 300;
           margin: 0;
           display: -webkit-box;
-          -webkit-line-clamp: 4;
+          -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          flex: 1;
         }
+
         .carousel-footer {
           display: flex;
+          align-items: center;
           justify-content: flex-end;
           margin-top: auto;
           padding-top: 0.25rem;
         }
+
         .carousel-read-more {
           font-size: 0.72rem;
           font-weight: 500;
@@ -314,29 +252,31 @@ export default function Carousel({ posts }: { posts: Post[] }) {
           letter-spacing: 0.02em;
           transition: color 0.2s;
         }
-        .carousel-read-more:hover {
+        .carousel-card:hover .carousel-read-more {
           color: #7c6dfa;
         }
 
         .carousel-dots {
           display: flex;
           justify-content: center;
-          align-items: center;
           gap: 6px;
         }
         .carousel-dot {
-          height: 5px;
+          height: 4px;
+          width: 14px;
           border-radius: 3px;
+          background: #2a2d3a;
           border: none;
           cursor: pointer;
+          transition: all 0.3s ease;
           padding: 0;
-          transition: width 0.3s ease, background 0.3s ease;
-          background: #2a2d3a;
-          width: 16px;
         }
         .carousel-dot.active {
           width: 28px;
           background: linear-gradient(90deg, #7c6dfa, #5b9cf6);
+        }
+        .carousel-dot:hover:not(.active) {
+          background: #3d4155;
         }
       `}</style>
 
@@ -352,46 +292,20 @@ export default function Carousel({ posts }: { posts: Post[] }) {
 
           <div className="carousel-track-wrap">
             <div className="carousel-track" ref={scrollRef}>
-              {allPosts.map((post, i) => {
-                const initials = post.author_username
-                  ? post.author_username.slice(0, 2).toUpperCase()
-                  : "??";
-                return (
-                  <div key={`${post.id}-${i}`} className="carousel-card">
-                    <div className="carousel-header">
-                      <h2 className="carousel-title">{post.title}</h2>
-                      <span className="carousel-date">{post.created_at}</span>
-                    </div>
-
-                    <div className="carousel-author">
-                      <div className="carousel-avatar">{initials}</div>
-                      <span className="carousel-username">
-                        {post.author_username}
-                      </span>
-                      {post.author_role && (
-                        <span
-                          className={`carousel-role post-role-${post.author_role.toLowerCase()}`}
-                        >
-                          {post.author_role}
-                        </span>
-                      )}
-                    </div>
-
-                    <hr className="carousel-divider" />
-
-                    <p className="carousel-content">{post.content}</p>
-
-                    <div className="carousel-footer">
-                      <a
-                        href={`/posts/${post.id}`}
-                        className="carousel-read-more"
-                      >
-                        Read more →
-                      </a>
-                    </div>
+              {allPosts.map((post, i) => (
+                <Link
+                  key={`${post.id}-${i}`}
+                  href={`/posts/${post.id}`}
+                  className="carousel-card"
+                >
+                  <h2 className="carousel-title">{post.title}</h2>
+                  <hr className="carousel-divider" />
+                  <p className="carousel-content">{post.content}</p>
+                  <div className="carousel-footer">
+                    <span className="carousel-read-more">Read more →</span>
                   </div>
-                );
-              })}
+                </Link>
+              ))}
             </div>
           </div>
 

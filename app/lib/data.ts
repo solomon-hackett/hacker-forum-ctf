@@ -93,13 +93,14 @@ export async function fetchUserById(id: string) {
   return data[0];
 }
 
-export async function fetchNotifications(id: string, role: string) {
+export async function fetchNotifications(id: string) {
   const data = await sql<Notification[]>`
-    SELECT *
+    SELECT notifications.*
     FROM notifications
+    JOIN users ON users.id = notifications.user_id
     WHERE notifications.user_id = ${id}
     AND (
-      ${role} = 'admin'
+      users.role = 'admin'
       OR notifications.is_read = false
       OR notifications.created_at >= NOW() - INTERVAL '3 weeks'
     )

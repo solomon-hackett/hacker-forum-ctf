@@ -138,3 +138,15 @@ export async function markNotisAsRead(userId: string) {
     throw new Error("Could not update notifications");
   }
 }
+
+export async function deletePost(id: number) {
+  try {
+    await sql`DELETE FROM posts WHERE id = ${id}`;
+    revalidatePath("/posts");
+    revalidatePath("/account/posts");
+    revalidatePath("/in-review");
+  } catch (error) {
+    console.log("Database error:" + error);
+    throw new Error("Failed to delete post.");
+  }
+}

@@ -1,14 +1,18 @@
 "use client";
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useDebouncedCallback } from 'use-debounce';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
-import { checkUsernameExists, signUp } from '@/app/lib/actions';
-import { SignUpState } from '@/app/lib/definitions';
-import { ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { KeyIcon, UserIcon } from '@heroicons/react/24/solid';
+import { checkUsernameExists, signUp } from "@/app/lib/actions";
+import { SignUpState } from "@/app/lib/definitions";
+import {
+  ExclamationCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
+import { KeyIcon, UserIcon } from "@heroicons/react/24/solid";
 
 const usernameRegex = /^[a-zA-Z0-9_]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).*$/;
@@ -67,6 +71,8 @@ export default function SignUpForm() {
   const [repMatchState, setRepMatchState] = useState<
     "none" | "match" | "mismatch"
   >("none");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRepPassword, setShowRepPassword] = useState(false);
   const [state, formAction, isPending] = useActionState<SignUpState, FormData>(
     signUp,
     { error: null, success: false },
@@ -75,16 +81,13 @@ export default function SignUpForm() {
   const router = useRouter();
 
   useEffect(() => {
-    if (state.success) {
-      router.replace("/auth/login");
-    }
+    if (state.success) router.replace("/auth/login");
   }, [state.success, router]);
 
   const lastRequestId = useRef(0);
 
   async function runUsernameValidation(username: string) {
     const requestId = ++lastRequestId.current;
-
     let message = "";
     let valid = true;
 
@@ -114,28 +117,25 @@ export default function SignUpForm() {
     runUsernameValidation,
     250,
   );
-
   function checkUsernameImmediate(username: string) {
     runUsernameValidation(username);
   }
 
-  function checkPassword(password: string) {
+  function checkPassword(p: string) {
     let message = "";
-    if (password.length < 8) {
-      message = "Password should be 8 characters or more.";
-    } else if (!passwordRegex.test(password)) {
+    if (p.length < 8) message = "Password should be 8 characters or more.";
+    else if (!passwordRegex.test(p))
       message = "Must contain uppercase, lowercase, number and symbol.";
-    }
     setPasswordDialogue(message);
   }
 
-  function checkRepPassword(repPassword: string, currentPassword: string) {
-    if (!repPassword) {
+  function checkRepPassword(rep: string, current: string) {
+    if (!rep) {
       setPasswordRepDialogue("");
       setRepMatchState("none");
       return;
     }
-    if (repPassword !== currentPassword) {
+    if (rep !== current) {
       setPasswordRepDialogue("Passwords must match");
       setRepMatchState("mismatch");
     } else {
@@ -185,18 +185,34 @@ export default function SignUpForm() {
           background: #1a1d27;
           border: 1px solid #2a2d3a;
           border-radius: 10px;
-          padding: 0.7rem 0.9rem 0.7rem 2.7rem;
+          padding: 0.7rem 2.5rem 0.7rem 2.7rem;
           font-size: 0.875rem;
           font-family: 'Sora', sans-serif;
           color: #e8eaf2;
           outline: none;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
+        .signup-input-no-right {
+          padding-right: 0.9rem;
+        }
         .signup-input::placeholder { color: #6b7091; font-size: 0.8rem; }
         .signup-input:focus {
           border-color: #7c6dfa;
           box-shadow: 0 0 0 3px rgba(124, 109, 250, 0.12);
         }
+        .signup-eye-btn {
+          background: none;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          color: #6b7091;
+          display: flex;
+          align-items: center;
+          line-height: 0;
+          transition: color 0.2s;
+          flex-shrink: 0;
+        }
+        .signup-eye-btn:hover { color: #a0a3b8; }
         .signup-submit {
           background: linear-gradient(135deg, #7c6dfa, #5b9cf6);
           border: none;
@@ -217,14 +233,8 @@ export default function SignUpForm() {
           box-shadow: 0 6px 24px rgba(124, 109, 250, 0.35);
         }
         .signup-submit:active:not(:disabled) { transform: translateY(0); }
-        .signup-submit:disabled {
-          opacity: 0.35;
-          cursor: not-allowed;
-          box-shadow: none;
-        }
-        .signup-error-mono {
-          font-family: 'DM Mono', monospace;
-        }
+        .signup-submit:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+        .signup-error-mono { font-family: 'DM Mono', monospace; }
       `}</style>
 
       <form action={formAction} className="signup-card">
@@ -268,7 +278,7 @@ export default function SignUpForm() {
           </label>
           <div className="relative">
             <input
-              className="signup-input"
+              className="signup-input-no-right signup-input"
               type="text"
               name="username"
               id="username"
@@ -307,7 +317,7 @@ export default function SignUpForm() {
           <div className="relative">
             <input
               className="signup-input"
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               id="password"
               placeholder="8+ chars, mixed case & symbol"
@@ -323,6 +333,18 @@ export default function SignUpForm() {
               className="top-1/2 left-3 absolute w-4 h-4 -translate-y-1/2 pointer-events-none"
               style={{ color: "#6b7091" }}
             />
+            <button
+              type="button"
+              className="top-1/2 right-3 absolute -translate-y-1/2 signup-eye-btn"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="w-4 h-4" />
+              ) : (
+                <EyeIcon className="w-4 h-4" />
+              )}
+            </button>
           </div>
           <StrengthMeter password={password} />
           <ErrorPopup message={passwordDialogue} />
@@ -347,7 +369,7 @@ export default function SignUpForm() {
           <div className="relative">
             <input
               className="signup-input"
-              type="password"
+              type={showRepPassword ? "text" : "password"}
               name="password-rep"
               id="password-rep"
               placeholder="Same password again"
@@ -362,16 +384,31 @@ export default function SignUpForm() {
               className="top-1/2 left-3 absolute w-4 h-4 -translate-y-1/2 pointer-events-none"
               style={{ color: "#6b7091" }}
             />
-            {repMatchState !== "none" && (
-              <span
-                className="top-1/2 right-3 absolute text-sm -translate-y-1/2"
-                style={{
-                  color: repMatchState === "match" ? "#52e0a0" : "#f26f6f",
-                }}
+            {/* eye + match indicator grouped on the right */}
+            <div className="top-1/2 right-3 absolute flex items-center gap-2 -translate-y-1/2">
+              <button
+                type="button"
+                className="signup-eye-btn"
+                onClick={() => setShowRepPassword((v) => !v)}
+                aria-label={showRepPassword ? "Hide password" : "Show password"}
               >
-                {repMatchState === "match" ? "✓" : "✗"}
-              </span>
-            )}
+                {showRepPassword ? (
+                  <EyeSlashIcon className="w-4 h-4" />
+                ) : (
+                  <EyeIcon className="w-4 h-4" />
+                )}
+              </button>
+              {repMatchState !== "none" && (
+                <span
+                  className="text-sm"
+                  style={{
+                    color: repMatchState === "match" ? "#52e0a0" : "#f26f6f",
+                  }}
+                >
+                  {repMatchState === "match" ? "✓" : "✗"}
+                </span>
+              )}
+            </div>
           </div>
           <ErrorPopup message={passwordRepDialogue} />
         </div>
