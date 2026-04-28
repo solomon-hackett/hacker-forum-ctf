@@ -1,6 +1,5 @@
 import { fetchUserPosts } from "@/app/lib/data";
-
-import PostGrid from "./post-grid";
+import PostGrid from "@/app/ui/account/post-grid";
 
 export default async function UserPosts({
   id,
