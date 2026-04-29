@@ -202,10 +202,7 @@ export default async function Page(props: {
             <div className="posts-controls">
               <Search />
               <SortDropdown />
-              <Link
-                href="/posts/create?redirect=/account/posts"
-                className="create-btn"
-              >
+              <Link href="/posts/create?redirect=/posts" className="create-btn">
                 <PlusCircleIcon className="w-4 h-4" />
                 Create a Post
               </Link>

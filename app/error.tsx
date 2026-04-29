@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ArrowLeftIcon, ArrowPathIcon } from "@heroicons/react/20/solid";
@@ -14,10 +14,10 @@ export default function Error({
   reset: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Staggered reveal
     const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, []);
@@ -271,7 +271,12 @@ export default function Error({
               <ArrowPathIcon style={{ width: "1rem", height: "1rem" }} />
               Try again
             </button>
-            <button className="error-btn-ghost" onClick={() => router.back()}>
+            <button
+              className="error-btn-ghost"
+              onClick={() => {
+                router.back();
+              }}
+            >
               <ArrowLeftIcon style={{ width: "1rem", height: "1rem" }} />
               Go back
             </button>
