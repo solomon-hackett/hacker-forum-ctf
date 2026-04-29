@@ -1,6 +1,8 @@
-import { Metadata } from "next";
+import { Metadata } from 'next';
 
-import PostGrid from "@/app/ui/posts/post-grid";
+import PostGrid from '@/app/ui/posts/post-grid';
+
+import Search from '../ui/posts/search';
 
 export const metadata: Metadata = {
   title: "Posts",
@@ -102,7 +104,7 @@ export default function Page() {
               Explore content from across the network
             </div>
           </div>
-
+          <Search />
           {/* Grid */}
           <div className="posts-card">
             <p className="posts-section-label">All posts</p>

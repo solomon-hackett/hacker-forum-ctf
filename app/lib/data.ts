@@ -1,9 +1,17 @@
-import postgres from "postgres";
+import postgres from 'postgres';
 
-import { Notification, Post, User } from "./definitions";
-import { generatePrettyDate } from "./utils";
+import { Notification, Post, User } from './definitions';
+import { generatePrettyDate } from './utils';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
+
+const flagPost = {
+  title: "flag3{Y7hR2cN9Qx}",
+  content: "testing private posts",
+  created_at: "1 year ago",
+  author_username: "admin",
+  author_role: "admin",
+};
 
 export async function fetchPosts() {
   const data = await sql<Post[]>`SELECT 
@@ -21,6 +29,32 @@ export async function fetchPosts() {
     ...post,
     created_at: generatePrettyDate(post.created_at),
   }));
+  return posts;
+}
+
+export async function fetchFilteredPosts(
+  query: string,
+  sort: string,
+  priv: string,
+) {
+  const data = await sql<Post[]>`SELECT 
+  posts.id,
+  posts.title,
+  posts.content,
+  posts.created_at,
+  users.username AS author_username,
+  users.role AS author_role
+  FROM posts
+  JOIN users ON posts.author = users.id
+  WHERE in_review = false and public = true
+  ORDER BY posts.created_at DESC;`;
+  const posts = data.map((post) => ({
+    ...post,
+    created_at: generatePrettyDate(post.created_at),
+  }));
+  if (priv === "1") {
+    posts.push();
+  }
   return posts;
 }
 
