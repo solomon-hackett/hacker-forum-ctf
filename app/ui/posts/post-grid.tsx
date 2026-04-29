@@ -1,7 +1,17 @@
-import { fetchPosts } from "@/app/lib/data";
+import { fetchFilteredPosts } from "@/app/lib/data";
 
-export default async function PostGrid() {
-  const posts = await fetchPosts();
+export default async function PostGrid({
+  query,
+  sort,
+  priv,
+  currentPage,
+}: {
+  query: string;
+  sort: string;
+  priv: number;
+  currentPage: number;
+}) {
+  const posts = await fetchFilteredPosts(query, sort, priv, currentPage);
 
   return (
     <>
