@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/20/solid";
 
@@ -17,10 +17,30 @@ export default function SortDropdown() {
   const pathname = usePathname();
   const { replace } = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentSort = searchParams.get("sort");
   const currentLabel =
     SORT_OPTIONS.find((o) => o.value === currentSort)?.label ?? "Sort By";
+
+  function close() {
+    setIsClosing(true);
+    closeTimer.current = setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+    }, 150); // match animation duration
+  }
+
+  function toggle() {
+    if (isOpen) {
+      close();
+    } else {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      setIsOpen(true);
+      setIsClosing(false);
+    }
+  }
 
   function handleSort(value: string) {
     const params = new URLSearchParams(searchParams);
@@ -30,7 +50,7 @@ export default function SortDropdown() {
       params.delete("sort");
     }
     replace(`${pathname}?${params.toString()}`);
-    setIsOpen(false);
+    close();
   }
 
   return (
@@ -98,9 +118,14 @@ export default function SortDropdown() {
           background: linear-gradient(135deg, rgba(124,109,250,0.5), rgba(91,156,246,0.35));
           border-radius: 10px;
           z-index: 50;
-          animation: sort-menu-in 0.15s ease-out forwards;
           transform-origin: top center;
           width: min-content;
+        }
+        .sort-menu-wrap.entering {
+          animation: sort-menu-in 0.15s ease-out forwards;
+        }
+        .sort-menu-wrap.closing {
+          animation: sort-menu-out 0.15s ease-in forwards;
         }
 
         .sort-menu {
@@ -144,19 +169,30 @@ export default function SortDropdown() {
             transform: translateY(0) scale(1);
           }
         }
+
+        @keyframes sort-menu-out {
+          from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(-6px) scale(0.97);
+          }
+        }
       `}</style>
 
       <div className="sort-wrapper">
         <div className={`sort-trigger-wrap${isOpen ? " open" : ""}`}>
           <button
             className="sort-trigger"
-            onClick={() => setIsOpen((o) => !o)}
-            aria-expanded={isOpen}
+            onClick={toggle}
+            aria-expanded={isOpen && !isClosing}
             aria-haspopup="listbox"
           >
             <span className="sort-trigger-label">Sort:</span>
             <span className="sort-trigger-value">{currentLabel}</span>
-            {isOpen ? (
+            {isOpen && !isClosing ? (
               <ChevronUpIcon className="sort-chevron" />
             ) : (
               <ChevronDownIcon className="sort-chevron" />
@@ -165,7 +201,9 @@ export default function SortDropdown() {
         </div>
 
         {isOpen && (
-          <div className="sort-menu-wrap">
+          <div
+            className={`sort-menu-wrap ${isClosing ? "closing" : "entering"}`}
+          >
             <div className="sort-menu" role="listbox">
               {SORT_OPTIONS.map((option) => (
                 <button

@@ -1,14 +1,11 @@
 "use client";
 
-import clsx from "clsx";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 
 import { handleSignOut } from "@/app/lib/actions";
 import {
   ArrowLeftStartOnRectangleIcon,
-  Bars3Icon,
   DocumentTextIcon,
   ShieldCheckIcon,
   UserIcon,
@@ -25,7 +22,6 @@ const adminLinks = [
 
 export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <>
@@ -43,37 +39,20 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           flex-direction: column;
           gap: 0.5rem;
           padding: 0.75rem;
-          transition: width 0.25s ease;
-          z-index: 30;
+          z-index: 20;
           background: #0d0e12;
           border-right: 1px solid #2a2d3a;
-          border-top: none;
-        }
-        .sidenav.collapsed {
-          width: 68px;
         }
 
-        /* Toggle button */
-        .sidenav-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          background: #13151c;
-          border: 1px solid #2a2d3a;
-          border-radius: 10px;
-          padding: 0.5rem;
-          cursor: pointer;
-          color: #6b7091;
-          transition: border-color 0.2s, color 0.2s;
+        .sidenav-logo-spacer {
+          height: 80px;
+          margin-top: -0.75rem;
+          margin-left: -0.75rem;
+          margin-right: -0.75rem;
           flex-shrink: 0;
-        }
-        .sidenav-toggle:hover {
-          border-color: #3d4155;
-          color: #e8eaf2;
+          border-bottom: 1px solid #2a2d3a;
         }
 
-        /* Nav panel */
         .sidenav-panel {
           flex: 1;
           display: flex;
@@ -82,10 +61,10 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           background: #13151c;
           border: 1px solid #2a2d3a;
           border-radius: 14px;
-          padding: 0.5rem;
+          padding: 0.4rem;
           position: relative;
-          overflow: hidden;
           min-height: 0;
+          overflow: hidden;
         }
         .sidenav-panel::before {
           content: '';
@@ -96,38 +75,24 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           pointer-events: none;
         }
 
-        .spacer{
-        display: flex;
-          align-items: center;
-          background: #13151c;
-          border: 1px solid #2a2d3a;
-          border-radius: 14px;
-          padding: 0.5rem 1.25rem;
-          text-decoration: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        /* Links */
         .sidenav-link {
           display: flex;
           align-items: center;
-          gap: 0.65rem;
-          padding: 0.55rem 0.65rem;
+          gap: 0.55rem;
+          padding: 0.45rem 0.4rem;
           border-radius: 10px;
           font-size: 0.82rem;
           font-weight: 400;
           color: #6b7091;
           text-decoration: none;
           border: 1px solid transparent;
+          box-sizing: border-box;
+          width: 100%;
+          flex-shrink: 0;
           transition: color 0.2s, background 0.2s, border-color 0.2s;
           white-space: nowrap;
-          overflow: hidden;
-          flex-shrink: 0;
         }
-        .sidenav-link:hover {
-          color: #e8eaf2;
-          background: #1a1d27;
-        }
+        .sidenav-link:hover { color: #e8eaf2; background: #1a1d27; }
         .sidenav-link.active {
           color: #e8eaf2;
           background: linear-gradient(135deg, rgba(124,109,250,.18), rgba(91,156,246,.12));
@@ -136,8 +101,7 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
         }
         .sidenav-link.admin-link { color: #ef9f27; }
         .sidenav-link.admin-link:hover {
-          background: rgba(239,159,39,.08);
-          color: #f5bc5e;
+          background: rgba(239,159,39,.08); color: #f5bc5e;
         }
         .sidenav-link.admin-link.active {
           background: rgba(239,159,39,.12);
@@ -145,33 +109,19 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           color: #f5bc5e;
         }
 
+        .sidenav-icon { flex-shrink: 0; }
+
         .sidenav-divider {
-          height: 1px;
-          background: #2a2d3a;
-          border: none;
-          margin: 0.25rem 0;
-          flex-shrink: 0;
+          height: 1px; background: #2a2d3a;
+          border: none; margin: 0.25rem 0; flex-shrink: 0;
         }
 
-        /* Label hide on collapse */
-        .sidenav-label {
-          opacity: 1;
-          max-width: 200px;
-          transition: opacity 0.15s ease, max-width 0.25s ease;
-          overflow: hidden;
-        }
-        .sidenav.collapsed .sidenav-label {
-          opacity: 0;
-          max-width: 0;
-          pointer-events: none;
-        }
-
-        /* Sign out */
+        .sidenav > form { flex-shrink: 0; width: 100%; }
         .sidenav-signout {
           display: flex;
           align-items: center;
-          gap: 0.65rem;
-          padding: 0.55rem 0.65rem;
+          gap: 0.55rem;
+          padding: 0.45rem 0.4rem;
           border-radius: 10px;
           background: #13151c;
           border: 1px solid #2a2d3a;
@@ -180,9 +130,9 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           font-size: 0.82rem;
           cursor: pointer;
           width: 100%;
-          white-space: nowrap;
-          overflow: hidden;
+          box-sizing: border-box;
           flex-shrink: 0;
+          white-space: nowrap;
           transition: color 0.2s, background 0.2s, border-color 0.2s;
         }
         .sidenav-signout:hover {
@@ -192,17 +142,9 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
         }
       `}</style>
 
-      <aside className={clsx("sidenav", { collapsed })}>
-        {/* Collapse toggle */}
-        <button
-          className="sidenav-toggle"
-          onClick={() => setCollapsed((prev) => !prev)}
-          aria-label="Toggle sidebar"
-        >
-          <Bars3Icon className="w-4 h-4" />
-        </button>
+      <aside className="sidenav">
+        <div className="sidenav-logo-spacer" />
 
-        {/* Nav links */}
         <nav className="sidenav-panel">
           {links.map((link) => {
             const isActive = pathname === link.href;
@@ -211,10 +153,10 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={clsx("sidenav-link", { active: isActive })}
+                className={`sidenav-link${isActive ? " active" : ""}`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="sidenav-label">{link.name}</span>
+                <Icon className="w-4 h-4 sidenav-icon" />
+                {link.name}
               </Link>
             );
           })}
@@ -229,12 +171,10 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={clsx("sidenav-link admin-link", {
-                      active: isActive,
-                    })}
+                    className={`sidenav-link admin-link${isActive ? " active" : ""}`}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="sidenav-label">{link.name}</span>
+                    <Icon className="w-4 h-4 sidenav-icon" />
+                    {link.name}
                   </Link>
                 );
               })}
@@ -242,11 +182,10 @@ export default function SideNav({ isAdmin }: { isAdmin: boolean }) {
           )}
         </nav>
 
-        {/* Sign out pinned to bottom */}
         <form action={handleSignOut}>
           <button className="sidenav-signout">
-            <ArrowLeftStartOnRectangleIcon className="w-4 h-4 shrink-0" />
-            <span className="sidenav-label">Sign Out</span>
+            <ArrowLeftStartOnRectangleIcon className="w-4 h-4 sidenav-icon" />
+            Sign Out
           </button>
         </form>
       </aside>

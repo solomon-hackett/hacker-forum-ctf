@@ -1,7 +1,7 @@
-import { Metadata } from 'next';
+import { Metadata } from "next";
 
-import SideNav from '@/app/ui/account/sidenav';
-import { auth } from '@/auth';
+import SideNav from "@/app/ui/account/sidenav";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Your posts",
@@ -22,7 +22,7 @@ export default async function Layout({
       <style>{`
         .account-layout {
           display: flex;
-          min-height: 100vh;
+          min-height: calc(100vh - 72px);
         }
         .account-sidebar-offset {
           /* matches sidenav expanded width */
