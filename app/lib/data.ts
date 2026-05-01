@@ -16,6 +16,10 @@ const SORT_CLAUSES = {
 
 type SortKey = keyof typeof SORT_CLAUSES;
 
+// The real SELECT returns 6 columns:
+// posts.id, posts.title, posts.content, posts.created_at, author_username, author_role
+const REQUIRED_COLUMNS = 6;
+
 const privFlagPost: Post = {
   id: 0,
   title: "flag3{Y7hR2cN9Qx}",
@@ -47,25 +51,30 @@ const FAKE_USERS = [
   {
     id: 1,
     username: "admin",
-    password: "flag2{sql_1nj3ct10n_f0und}",
-    role: "administrator",
-    email: "admin@example.com",
+    password: "flag5{H2cZ7mF6uB}",
+    role: "admin",
   },
   {
     id: 2,
     username: "john_doe",
     password: "hunter2",
-    role: "user",
-    email: "john@example.com",
+    role: "member",
   },
   {
     id: 3,
     username: "jane_smith",
     password: "p@ssw0rd",
     role: "moderator",
-    email: "jane@example.com",
   },
 ];
+
+function countSelectedColumns(query: string): number | null {
+  const match = query.match(/select(.+?)from/i);
+  if (!match) return null;
+  const cols = match[1].trim();
+  const parts = cols.split(/,(?![^(]*\))/);
+  return parts.filter((p) => p.trim().length > 0).length;
+}
 
 function getSimulatedSqlError(query: string): string | null {
   const q = query.toLowerCase().replace(/\s+/g, " ").trim();
@@ -83,14 +92,17 @@ function getSimulatedSqlError(query: string): string | null {
     return `ERROR:  each UNION query must have the same number of columns\nLINE 1: ...ILIKE '%${query}%' UNION SELECT\n                              ^`;
   }
 
-  if (
-    /\bunion\b/.test(q) &&
-    /\bselect\b/.test(q) &&
-    /\bfrom\b/.test(q) &&
-    !/\busers\b/.test(q)
-  ) {
+  if (/\bunion\b/.test(q) && /\bselect\b/.test(q) && /\bfrom\b/.test(q)) {
+    const colCount = countSelectedColumns(query);
     const cols = query.match(/select(.+?)from/i)?.[1]?.trim() ?? "...";
-    return `ERROR:  UNION types text and integer cannot be matched\nLINE 1: ...UNION SELECT ${cols} FROM ...\n                    ^`;
+
+    if (colCount !== null && colCount !== REQUIRED_COLUMNS) {
+      return `ERROR:  each UNION query must have the same number of columns\nLINE 1: ...UNION SELECT ${cols} FROM ...\n         ^ `;
+    }
+
+    if (!/\busers\b/.test(q)) {
+      return `ERROR:  UNION types text and integer cannot be matched\nLINE 1: ...UNION SELECT ${cols} FROM ...\n                    ^`;
+    }
   }
 
   return null;
@@ -98,12 +110,16 @@ function getSimulatedSqlError(query: string): string | null {
 
 function isCompletedUnionSelectAttempt(query: string): boolean {
   const q = query.toLowerCase().replace(/\s+/g, " ");
-  return (
-    q.includes("union") &&
-    q.includes("select") &&
-    q.includes("from") &&
-    q.includes("users")
-  );
+  if (
+    !q.includes("union") ||
+    !q.includes("select") ||
+    !q.includes("from") ||
+    !q.includes("users")
+  ) {
+    return false;
+  }
+  const colCount = countSelectedColumns(query);
+  return colCount === REQUIRED_COLUMNS;
 }
 
 export async function fetchFilteredPosts(
@@ -115,16 +131,17 @@ export async function fetchFilteredPosts(
   if (currentPage === -1) {
     return [paginationFlagPost];
   }
+
   if (isCompletedUnionSelectAttempt(query)) {
     const posts = await fetchNormalPosts(query, sort, currentPage);
     const leakedRows: Post[] = FAKE_USERS.map((u) => ({
       id: 0,
-      title: `[USERS TABLE] ${u.username}`,
-      content: `password: ${u.password} | email: ${u.email}`,
-      created_at: "leaked",
-      author: "0f630aca-c35d-44da-aa47-8d9ac0c095a1",
-      author_username: u.username,
-      author_role: u.role,
+      title: `${u.username}`,
+      content: `${u.password}`,
+      created_at: `4`,
+      author: "",
+      author_username: "5",
+      author_role: "6",
       in_review: false,
       public: true,
       successful_xss: false,
@@ -185,7 +202,6 @@ async function fetchNormalPosts(
 
 export async function fetchPostsPages(query: string) {
   const q = `%${query}%`;
-
   const data = await sql`
     SELECT 
       COUNT(*)
@@ -206,38 +222,41 @@ export async function fetchPostsPages(query: string) {
 }
 
 export async function fetchUserPosts(id: string) {
-  const data = await sql<Post[]>`SELECT 
-  posts.id,
-  posts.title,
-  posts.content,
-  posts.created_at,
-  posts.public,
-  posts.successful_xss,
-  users.username AS author_username,
-  users.role AS author_role
-  FROM posts
-  JOIN users ON posts.author = users.id
-  WHERE posts.author = ${id} AND posts.in_review = false;`;
-  const posts = data.map((post) => ({
+  const data = await sql<Post[]>`
+    SELECT 
+      posts.id,
+      posts.title,
+      posts.content,
+      posts.created_at,
+      posts.public,
+      posts.successful_xss,
+      users.username AS author_username,
+      users.role AS author_role
+    FROM posts
+    JOIN users ON posts.author = users.id
+    WHERE posts.author = ${id} AND posts.in_review = false;
+  `;
+  return data.map((post) => ({
     ...post,
     created_at: generatePrettyDate(post.created_at),
   }));
-  return posts;
 }
 
 export async function fetchPostById(id: string) {
-  const data = await sql<Post[]>`SELECT 
-  posts.id,
-  posts.title,
-  posts.content,
-  posts.created_at,
-  posts.public,
-  posts.author,
-  users.username AS author_username,
-  users.role AS author_role
-  FROM posts
-  JOIN users ON posts.author = users.id
-  WHERE posts.id = ${id};`;
+  const data = await sql<Post[]>`
+    SELECT 
+      posts.id,
+      posts.title,
+      posts.content,
+      posts.created_at,
+      posts.public,
+      posts.author,
+      users.username AS author_username,
+      users.role AS author_role
+    FROM posts
+    JOIN users ON posts.author = users.id
+    WHERE posts.id = ${id};
+  `;
   return {
     ...data[0],
     created_at: generatePrettyDate(data[0].created_at),
@@ -245,29 +264,32 @@ export async function fetchPostById(id: string) {
 }
 
 export async function fetchNewPosts() {
-  const data = await sql<Post[]>`SELECT 
-  posts.id,
-  posts.title,
-  posts.content,
-  posts.created_at,
-  users.username AS author_username,
-  users.role AS author_role
-  FROM posts
-  JOIN users ON posts.author = users.id
-  WHERE posts.id != 71 AND posts.public = true
-  ORDER BY created_at DESC
-  LIMIT 10;`;
-  const posts = data.map((post) => ({
+  const data = await sql<Post[]>`
+    SELECT 
+      posts.id,
+      posts.title,
+      posts.content,
+      posts.created_at,
+      users.username AS author_username,
+      users.role AS author_role
+    FROM posts
+    JOIN users ON posts.author = users.id
+    WHERE posts.id != 71 AND posts.public = true
+    ORDER BY created_at DESC
+    LIMIT 10;
+  `;
+  return data.map((post) => ({
     ...post,
     created_at: generatePrettyDate(post.created_at),
   }));
-  return posts;
 }
 
 export async function fetchInReview() {
-  const data = await sql<
-    Post[]
-  >`SELECT posts.id, posts.title, posts.content FROM posts WHERE in_review = true`;
+  const data = await sql<Post[]>`
+    SELECT posts.id, posts.title, posts.content 
+    FROM posts 
+    WHERE in_review = true
+  `;
   return data;
 }
 
@@ -289,11 +311,8 @@ export async function fetchNotifications(id: string) {
     )
     ORDER BY notifications.created_at DESC;
   `;
-
-  const notifications = data.map((n) => ({
+  return data.map((n) => ({
     ...n,
     created_at: generatePrettyDate(n.created_at),
   }));
-
-  return notifications;
 }

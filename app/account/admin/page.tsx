@@ -271,7 +271,7 @@ export default async function Page() {
                   ))}
                   <tr>
                     <td className="post-title-cell">
-                      flag8&#123;m4Tq8BzP1K&#125;
+                      flag7&#123;m4Tq8BzP1K&#125;
                     </td>
                     <td className="post-author-cell">admin</td>
                     <td>67 days ago</td>

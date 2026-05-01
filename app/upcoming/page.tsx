@@ -165,7 +165,7 @@ export default async function UpcomingPage() {
             <p className="upcoming-section-label">Premium content</p>
             <p className="upcoming-content">
               {/* eslint-disable-next-line react/no-danger */}
-              flag11&#123;a8Kp3VtM6s&#125;
+              flag10&#123;a8Kp3VtM6s&#125;
             </p>
           </div>
         </div>

@@ -2,4 +2,4 @@ User-agent: *
 Disallow: /upcoming
 Disallow: /admin
 
-#flag10(T4rX9nQb2Z)
+#flag9(T4rX9nQb2Z)
