@@ -323,7 +323,10 @@ export default function PostGrid({
                 <p className="post-content">{post.content}</p>
 
                 <div className="post-footer">
-                  <a href={`/posts/${post.id}`} className="post-read-more">
+                  <a
+                    href={`/posts/${post.id}?redirect=/account/posts`}
+                    className="post-read-more"
+                  >
                     Read more →
                   </a>
                   {!isAdmin && (

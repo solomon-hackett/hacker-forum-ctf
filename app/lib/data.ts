@@ -43,6 +43,69 @@ const paginationFlagPost: Post = {
   successful_xss: false,
 };
 
+const FAKE_USERS = [
+  {
+    id: 1,
+    username: "admin",
+    password: "flag2{sql_1nj3ct10n_f0und}",
+    role: "administrator",
+    email: "admin@example.com",
+  },
+  {
+    id: 2,
+    username: "john_doe",
+    password: "hunter2",
+    role: "user",
+    email: "john@example.com",
+  },
+  {
+    id: 3,
+    username: "jane_smith",
+    password: "p@ssw0rd",
+    role: "moderator",
+    email: "jane@example.com",
+  },
+];
+
+function getSimulatedSqlError(query: string): string | null {
+  const q = query.toLowerCase().replace(/\s+/g, " ").trim();
+
+  if (query.includes("'")) {
+    const after = query.slice(query.indexOf("'") + 1);
+    return `ERROR:  unterminated quoted string at or near "'${after}"\nLINE 1: ...title ILIKE '%${query}%'\n                              ^`;
+  }
+
+  if (/\bunion\b/.test(q) && !/\bselect\b/.test(q)) {
+    return `ERROR:  syntax error at or near "UNION"\nLINE 1: ...created_at::text ILIKE '%${query}%' UNION\n                                                    ^`;
+  }
+
+  if (/\bunion\b/.test(q) && /\bselect\b/.test(q) && !/\bfrom\b/.test(q)) {
+    return `ERROR:  each UNION query must have the same number of columns\nLINE 1: ...ILIKE '%${query}%' UNION SELECT\n                              ^`;
+  }
+
+  if (
+    /\bunion\b/.test(q) &&
+    /\bselect\b/.test(q) &&
+    /\bfrom\b/.test(q) &&
+    !/\busers\b/.test(q)
+  ) {
+    const cols = query.match(/select(.+?)from/i)?.[1]?.trim() ?? "...";
+    return `ERROR:  UNION types text and integer cannot be matched\nLINE 1: ...UNION SELECT ${cols} FROM ...\n                    ^`;
+  }
+
+  return null;
+}
+
+function isCompletedUnionSelectAttempt(query: string): boolean {
+  const q = query.toLowerCase().replace(/\s+/g, " ");
+  return (
+    q.includes("union") &&
+    q.includes("select") &&
+    q.includes("from") &&
+    q.includes("users")
+  );
+}
+
 export async function fetchFilteredPosts(
   query: string,
   sort: string,
@@ -52,7 +115,42 @@ export async function fetchFilteredPosts(
   if (currentPage === -1) {
     return [paginationFlagPost];
   }
+  if (isCompletedUnionSelectAttempt(query)) {
+    const posts = await fetchNormalPosts(query, sort, currentPage);
+    const leakedRows: Post[] = FAKE_USERS.map((u) => ({
+      id: 0,
+      title: `[USERS TABLE] ${u.username}`,
+      content: `password: ${u.password} | email: ${u.email}`,
+      created_at: "leaked",
+      author: "0f630aca-c35d-44da-aa47-8d9ac0c095a1",
+      author_username: u.username,
+      author_role: u.role,
+      in_review: false,
+      public: true,
+      successful_xss: false,
+    }));
+    return [...posts, ...leakedRows];
+  }
 
+  const sqlError = getSimulatedSqlError(query);
+  if (sqlError) {
+    throw new Error(sqlError);
+  }
+
+  const posts = await fetchNormalPosts(query, sort, currentPage);
+
+  if (priv === 1) {
+    posts.push(privFlagPost);
+  }
+
+  return posts;
+}
+
+async function fetchNormalPosts(
+  query: string,
+  sort: string,
+  currentPage: number,
+): Promise<Post[]> {
   const orderBy =
     SORT_CLAUSES[(sort in SORT_CLAUSES ? sort : "title-asc") as SortKey];
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -79,14 +177,10 @@ export async function fetchFilteredPosts(
     ${orderBy}
     LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset};
   `;
-  const posts = data.map((post) => ({
+  return data.map((post) => ({
     ...post,
     created_at: generatePrettyDate(post.created_at),
   }));
-  if (priv === 1) {
-    posts.push(privFlagPost);
-  }
-  return posts;
 }
 
 export async function fetchPostsPages(query: string) {
@@ -138,6 +232,7 @@ export async function fetchPostById(id: string) {
   posts.content,
   posts.created_at,
   posts.public,
+  posts.author,
   users.username AS author_username,
   users.role AS author_role
   FROM posts

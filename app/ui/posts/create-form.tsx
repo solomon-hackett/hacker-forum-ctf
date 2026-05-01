@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from 'react';
+import Link from "next/link";
+import { useState } from "react";
 
-import { createPost } from '@/app/lib/actions';
-import { ArrowRightIcon } from '@heroicons/react/20/solid';
+import { createPost } from "@/app/lib/actions";
+import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import {
-    ChevronDownIcon, ChevronUpIcon, ExclamationCircleIcon, GlobeAltIcon, LockClosedIcon, PencilIcon
-} from '@heroicons/react/24/outline';
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ExclamationCircleIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  PencilIcon,
+} from "@heroicons/react/24/outline";
 
 export default function CreateForm({
   id,
@@ -89,6 +95,7 @@ export default function CreateForm({
           color: #e8eaf2;
           outline: none;
           transition: border-color 0.2s, box-shadow 0.2s;
+          box-sizing: border-box;
         }
         .create-textarea {
           resize: vertical;
@@ -193,13 +200,14 @@ export default function CreateForm({
           font-family: 'Sora', sans-serif;
           font-size: 0.875rem;
           font-weight: 500;
-          padding: 0.75rem 2.5rem;
+          padding: 0.75rem 2rem;
           display: flex;
           align-items: center;
           gap: 6px;
           transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
           letter-spacing: 0.01em;
           box-shadow: 0 4px 20px rgba(124, 109, 250, 0.25);
+          white-space: nowrap;
         }
         .create-submit:hover {
           opacity: 0.9;
@@ -207,6 +215,27 @@ export default function CreateForm({
           box-shadow: 0 6px 24px rgba(124, 109, 250, 0.35);
         }
         .create-submit:active { transform: translateY(0); }
+
+        .create-cancel {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: 'Sora', sans-serif;
+          font-size: 0.875rem;
+          font-weight: 400;
+          color: #6b7091;
+          text-decoration: none;
+          padding: 0.75rem 1.25rem;
+          border-radius: 10px;
+          border: 1px solid transparent;
+          transition: color 0.2s, border-color 0.2s, background 0.2s;
+        }
+        .create-cancel:hover {
+          color: #a0a3b8;
+          border-color: #2a2d3a;
+          background: rgba(255, 255, 255, 0.03);
+        }
+
         .visibility-badge {
           margin-left: auto;
           font-size: 0.65rem;
@@ -217,6 +246,15 @@ export default function CreateForm({
           border-radius: 5px;
           background: rgba(124, 109, 250, 0.12);
           color: #7c6dfa;
+        }
+
+        .form-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 0.5rem;
+          position: relative;
+          z-index: 1;
         }
       `}</style>
 
@@ -276,7 +314,8 @@ export default function CreateForm({
             }}
           >
             All posts are reviewed by an auto-mod before being approved for the
-            site — please be patient.
+            site — please be patient. You may have to refresh your page to see
+            posts once they have been reviewed.
           </p>
         </div>
 
@@ -461,8 +500,11 @@ export default function CreateForm({
         <input type="hidden" name="author" value={id} />
         <input type="hidden" name="redirect" value={redirect} />
 
-        {/* Submit */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        {/* Actions */}
+        <div className="form-actions">
+          <Link href={redirect} className="create-cancel">
+            Cancel
+          </Link>
           <button type="submit" className="create-submit">
             Post
             <ArrowRightIcon style={{ width: "1rem", height: "1rem" }} />

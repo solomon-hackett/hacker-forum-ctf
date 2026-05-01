@@ -2,8 +2,162 @@ import Link from "next/link";
 
 import { fetchPostById } from "@/app/lib/data";
 
-export default async function PostPage({ id }: { id: string }) {
+export default async function PostPage({
+  id,
+  author,
+  redirect,
+}: {
+  id: string;
+  author: string;
+  redirect: string;
+}) {
   const post = await fetchPostById(id);
+
+  if (!post.public && post.author !== author) {
+    return (
+      <>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+          .private-page {
+            font-family: 'Sora', sans-serif;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+          }
+
+          .private-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #6b7091;
+            text-decoration: none;
+            letter-spacing: 0.02em;
+            margin-bottom: 2rem;
+            transition: color 0.2s;
+          }
+          .private-back:hover { color: #e8eaf2; }
+          .private-back::before {
+            content: '←';
+            font-size: 0.85rem;
+          }
+
+          .private-card {
+            background: #13151c;
+            border: 1px solid #2a2d3a;
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          .private-card::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(242,111,111,.07) 0%, transparent 70%);
+            pointer-events: none;
+          }
+          .private-card::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; left: -40px;
+            width: 160px; height: 160px;
+            background: radial-gradient(circle, rgba(124,109,250,.06) 0%, transparent 70%);
+            pointer-events: none;
+          }
+
+          .private-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(242, 111, 111, 0.08);
+            border: 1px solid rgba(242, 111, 111, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+          }
+          .private-icon {
+            font-size: 1.4rem;
+            line-height: 1;
+          }
+
+          .private-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #e8eaf2;
+            letter-spacing: -0.02em;
+            margin: 0 0 0.6rem;
+            position: relative;
+            z-index: 1;
+          }
+
+          .private-body {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            color: #6b7091;
+            line-height: 1.7;
+            margin: 0 0 2rem;
+            max-width: 300px;
+            position: relative;
+            z-index: 1;
+          }
+
+          .private-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #f26f6f;
+            background: rgba(242, 111, 111, 0.08);
+            border: 1px solid rgba(242, 111, 111, 0.2);
+            border-radius: 8px;
+            padding: 0.35rem 0.75rem;
+            position: relative;
+            z-index: 1;
+          }
+          .private-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #f26f6f;
+            opacity: 0.7;
+          }
+        `}</style>
+
+        <div className="private-page">
+          <Link href={redirect} className="private-back">
+            Back to posts
+          </Link>
+
+          <div className="private-card">
+            <div className="private-icon-wrap">
+              <span className="private-icon">🔒</span>
+            </div>
+            <h1 className="private-title">This post is private</h1>
+            <p className="private-body">
+              Only the author can view this post. If you think this is a
+              mistake, reach out to the post&apos;s author directly.
+            </p>
+            <span className="private-badge">restricted access</span>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const initials = post.author_username
     ? post.author_username.slice(0, 2).toUpperCase()
@@ -155,7 +309,7 @@ export default async function PostPage({ id }: { id: string }) {
       `}</style>
 
       <div className="post-page">
-        <Link href="/posts" className="post-back">
+        <Link href={redirect} className="post-back">
           Back to posts
         </Link>
 

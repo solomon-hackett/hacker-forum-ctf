@@ -94,13 +94,13 @@ export default function SortDropdown() {
           position: absolute;
           top: calc(100% + 6px);
           left: 0;
-          right: 0;
           padding: 1px;
           background: linear-gradient(135deg, rgba(124,109,250,0.5), rgba(91,156,246,0.35));
           border-radius: 10px;
           z-index: 50;
           animation: sort-menu-in 0.15s ease-out forwards;
           transform-origin: top center;
+          width: min-content;
         }
 
         .sort-menu {

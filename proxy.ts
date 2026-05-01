@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
-import { auth } from '@/auth';
+import { auth } from "@/auth";
 
 export default auth((req) => {
   const res = NextResponse.next();
@@ -23,7 +23,14 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith("/in-review");
 
   if (isProtected && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/auth/login", req.url));
+    const loginUrl = new URL("/auth/login", req.url);
+
+    // preserve full original URL (path + query string)
+    const fullPath = req.nextUrl.pathname + req.nextUrl.search;
+
+    loginUrl.searchParams.set("callbackUrl", fullPath);
+
+    return NextResponse.redirect(loginUrl);
   }
 
   return res;
