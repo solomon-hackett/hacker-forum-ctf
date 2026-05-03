@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -10,8 +11,6 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-
-import { XssCard } from "./xss-card";
 
 function DeleteModal({
   postTitle,
@@ -298,7 +297,11 @@ export default function PostGrid({
               : "??";
             const isXss = post.successful_xss && !post.public;
             return isXss ? (
-              <XssCard key={post.id} />
+              <XssCard
+                key={post.id}
+                post={post}
+                onDelete={(id, title) => setPendingDelete({ id, title })}
+              />
             ) : (
               <div key={post.id} className="post-card">
                 <div className="post-header">
@@ -323,22 +326,22 @@ export default function PostGrid({
                 <p className="post-content">{post.content}</p>
 
                 <div className="post-footer">
-                  <a
+                  <Link
                     href={`/posts/${post.id}?redirect=/account/posts`}
                     className="post-read-more"
                   >
                     Read more →
-                  </a>
+                  </Link>
                   {!isAdmin && (
                     <div className="post-actions">
-                      <a
+                      <Link
                         href={`/posts/${post.id}/edit`}
                         className="post-action-btn"
                         title="Edit post"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <PencilIcon className="w-3.5 h-3.5" />
-                      </a>
+                      </Link>
                       <button
                         className="post-action-btn post-action-btn-delete"
                         title="Delete post"
@@ -367,5 +370,98 @@ export default function PostGrid({
         />
       )}
     </>
+  );
+}
+
+function XssCard({
+  post,
+  onDelete,
+}: {
+  post: {
+    id: number;
+    title: string;
+    content: string;
+    author_username: string;
+    author_role: string;
+    created_at: string;
+  };
+  onDelete: (id: number, title: string) => void;
+}) {
+  const [flagField] = useState<"title" | "content">(() =>
+    /<script/i.test(post.title) ? "title" : "content",
+  );
+
+  const initials = post.author_username?.slice(0, 2).toUpperCase() ?? "??";
+
+  return (
+    <div className="post-card">
+      <div className="post-header">
+        {flagField === "title" ? (
+          <h2
+            className="post-title"
+            dangerouslySetInnerHTML={{
+              __html: `<script>alert("flag6{Z9fL2qX7wA}")</script>`,
+            }}
+          />
+        ) : (
+          <h2 className="post-title">{post.title}</h2>
+        )}
+        <span className="post-date">{post.created_at}</span>
+      </div>
+
+      <div className="post-author">
+        <div className="post-avatar">{initials}</div>
+        <span className="post-username">{post.author_username}</span>
+        {post.author_role && (
+          <span
+            className={`post-role post-role-${post.author_role.toLowerCase()}`}
+          >
+            {post.author_role}
+          </span>
+        )}
+      </div>
+
+      <hr className="post-divider" />
+
+      {flagField === "content" ? (
+        <p
+          className="post-content"
+          dangerouslySetInnerHTML={{
+            __html: `<script>alert("flag6{Z9fL2qX7wA}")</script>`,
+          }}
+        />
+      ) : (
+        <p className="post-content">{post.content}</p>
+      )}
+
+      <div className="post-footer">
+        <Link
+          href={`/posts/${post.id}?redirect=/account/posts`}
+          className="post-read-more"
+        >
+          Read more →
+        </Link>
+        <div className="post-actions">
+          <Link
+            href={`/posts/${post.id}/edit`}
+            className="post-action-btn"
+            title="Edit post"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PencilIcon className="w-3.5 h-3.5" />
+          </Link>
+          <button
+            className="post-action-btn post-action-btn-delete"
+            title="Delete post"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(post.id, post.title);
+            }}
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
