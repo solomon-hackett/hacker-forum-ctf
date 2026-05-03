@@ -193,6 +193,10 @@ export default async function PostGrid({
           font-size: 0.875rem;
           font-weight: 300;
         }
+        .post-empty-query {
+          color: #a99df5;
+          font-weight: 500;
+        }
       `}</style>
 
       <div className="post-grid">
@@ -202,7 +206,14 @@ export default async function PostGrid({
           </div>
         ) : posts.length === 0 ? (
           <div className="post-empty">
-            No posts yet. Be the first to write one.
+            {query ? (
+              <>
+                No results for{" "}
+                <span className="post-empty-query">&ldquo;{query}&rdquo;</span>.
+              </>
+            ) : (
+              "No posts yet. Be the first to write one."
+            )}
           </div>
         ) : (
           posts.map((post) => {
