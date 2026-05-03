@@ -74,17 +74,29 @@ const FAKE_USERS = [
 
 /**
  * Strip SQL comments from a fragment.
- * Supports:
- *   --     single-line (PostgreSQL / standard SQL)
- *   /* *\/  block comment (PostgreSQL / standard SQL)
- *   #      single-line (MySQL — included for CTF leniency)
+ *
+ * Supported comment styles (MySQL + PostgreSQL union for CTF leniency):
+ *   --           end-of-line, with or without trailing space/chars (PostgreSQL/standard)
+ *   -- -         common SQLi terminator variant
+ *   #            end-of-line (MySQL)
+ *   /* ... *\/   block comment, including the /*!...*\/ MySQL variant (both dbs)
+ *
+ * Note: bare `#` is a URL fragment delimiter and will never reach the server
+ * from a browser address bar — players must URL-encode it as %23.  We handle
+ * it here so curl / programmatic attempts also work.
  */
-function stripComments(sql: string): string {
-  return sql
-    .replace(/#.*/g, "")
-    .replace(/--[^\n]*/g, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .trim();
+function stripComments(raw: string): string {
+  return (
+    raw
+      // block comments (including MySQL /*!...*\/ optimizer hints)
+      .replace(/\/\*!?[\s\S]*?\*\//g, "")
+      // MySQL # single-line (also catches %23-decoded versions)
+      .replace(/#.*/g, "")
+      // standard -- single-line: match -- followed by anything to EOL,
+      // OR -- at the very end of the string (no trailing char required)
+      .replace(/--.*/g, "")
+      .trim()
+  );
 }
 
 /**
@@ -130,96 +142,186 @@ function splitOnApostrophe(rawInput: string): {
 }
 
 /**
- * Given the SQL fragment that follows the apostrophe, simulate the PostgreSQL
- * error that would actually be returned, or null if the fragment looks valid.
+ * Determine what happens after an apostrophe is injected.
+ *
+ * Returns one of three outcomes:
+ *   { kind: "commented-out" }                    — rest of query is commented out, no UNION
+ *   { kind: "error", message: string }           — SQL syntax/semantic error
+ *   { kind: "valid", isUnion: "users"|"posts"|false } — structurally valid SQL continuation
+ *
+ * Flow:
+ *   1. Strip comments from the injected fragment.
+ *   2. If nothing remains → the attacker commented out the rest → silent pass.
+ *   3. Check for a second bare apostrophe → unterminated string error.
+ *   4. Check for forbidden DDL/DML → permission denied error.
+ *   5. Check for stray semicolon → multiple statements error.
+ *   6. Check for unmatched parentheses → syntax error.
+ *   7. UNION present but no SELECT → syntax error.
+ *   8. UNION SELECT present but no FROM → syntax error.
+ *   9. UNION SELECT … FROM … → validate column count, then table, then columns.
+ *  10. Non-UNION continuation → validate it starts with a known SQL keyword.
  */
-function getSimulatedSqlError(
+function evaluateInjection(
   normalQuery: string,
   injectedSql: string,
-): string | null {
+):
+  | { kind: "commented-out" }
+  | { kind: "error"; message: string }
+  | { kind: "valid"; isUnion: "users" | "posts" | false } {
+  const ilikeLine = `posts.title ILIKE '%${normalQuery}'`;
+
+  // ── Step 1: strip comments to see what actually executes ─────────────────
   const stripped = stripComments(injectedSql);
   const q = stripped.toLowerCase().replace(/\s+/g, " ").trim();
 
-  const ilikeLine = `posts.title ILIKE '%${normalQuery}'`;
+  // ── Step 2: everything commented out → silent pass, not a UNION ──────────
+  if (q === "") {
+    return { kind: "commented-out" };
+  }
 
-  // -------------------------------------------------------------------------
-  // 1. Second bare apostrophe inside the injected fragment → unterminated
-  //    quoted string.
-  // -------------------------------------------------------------------------
+  // ── Step 3: second bare apostrophe → unterminated quoted string ───────────
   if (injectedSql.includes("'")) {
     const afterSecond = injectedSql.slice(injectedSql.indexOf("'") + 1);
-    return (
-      `ERROR:  unterminated quoted string at or near "'${afterSecond.slice(0, 20)}"\n` +
-      `LINE 1: ${ilikeLine}${injectedSql.slice(0, 40)}\n` +
-      `        ${"^".padStart(ilikeLine.length + 2)}`
-    );
+    return {
+      kind: "error",
+      message:
+        `ERROR:  unterminated quoted string at or near "'${afterSecond.slice(0, 20)}"\n` +
+        `LINE 1: ${ilikeLine}${injectedSql.slice(0, 40)}\n` +
+        `        ${"^".padStart(ilikeLine.length + 2)}`,
+    };
   }
 
-  // -------------------------------------------------------------------------
-  // 2. Nothing left after stripping comments → valid closed string + comment.
-  // -------------------------------------------------------------------------
-  if (q === "") {
-    return null;
+  // ── Step 4: DDL / DML → permission denied ────────────────────────────────
+  if (/\b(drop|delete|insert|update|truncate|alter|create)\b/.test(q)) {
+    const kw = q.match(
+      /\b(drop|delete|insert|update|truncate|alter|create)\b/,
+    )![1];
+    return {
+      kind: "error",
+      message:
+        `ERROR:  permission denied for table ${["insert", "update", "delete"].includes(kw) ? "posts" : "unknown"}\n` +
+        `DETAIL: The current user does not have ${kw.toUpperCase()} privileges.`,
+    };
   }
 
-  // -------------------------------------------------------------------------
-  // 3. UNION without SELECT
-  // -------------------------------------------------------------------------
+  // ── Step 5: stray semicolon → multiple statements not allowed ─────────────
+  if (stripped.includes(";")) {
+    return {
+      kind: "error",
+      message:
+        `ERROR:  cannot insert multiple commands into a prepared statement\n` +
+        `LINE 1: ${ilikeLine}${stripped.slice(0, 30)};\n` +
+        `        ${"^".padStart(ilikeLine.length + stripped.indexOf(";") + 2)}`,
+    };
+  }
+
+  // ── Step 6: unmatched parentheses ─────────────────────────────────────────
+  const openParens = (stripped.match(/\(/g) || []).length;
+  const closeParens = (stripped.match(/\)/g) || []).length;
+  if (openParens !== closeParens) {
+    return {
+      kind: "error",
+      message:
+        `ERROR:  syntax error at or near "${openParens > closeParens ? "(" : ")"}"\n` +
+        `LINE 1: ${ilikeLine}${stripped.slice(0, 40)}\n` +
+        `        ${"^".padStart(ilikeLine.length + 2)}`,
+    };
+  }
+
+  // ── Step 7: UNION without SELECT ──────────────────────────────────────────
   if (/\bunion\b/.test(q) && !/\bselect\b/.test(q)) {
-    return (
-      `ERROR:  syntax error at or near "UNION"\n` +
-      `LINE 1: ${ilikeLine} UNION\n` +
-      `        ${"^".padStart(ilikeLine.length + 7)}`
-    );
+    return {
+      kind: "error",
+      message:
+        `ERROR:  syntax error at or near "UNION"\n` +
+        `LINE 1: ${ilikeLine} UNION\n` +
+        `        ${"^".padStart(ilikeLine.length + 7)}`,
+    };
   }
 
-  // -------------------------------------------------------------------------
-  // 4. UNION SELECT without FROM
-  // -------------------------------------------------------------------------
+  // ── Step 8: UNION SELECT without FROM ────────────────────────────────────
   if (/\bunion\b/.test(q) && /\bselect\b/.test(q) && !/\bfrom\b/.test(q)) {
     const colMatch = stripped.match(/select(.+)/i);
     const cols = colMatch ? colMatch[1].trim().slice(0, 40) : "...";
-    return (
-      `ERROR:  syntax error at or near "SELECT"\n` +
-      `DETAIL: Each UNION query must have a FROM clause.\n` +
-      `LINE 1: ${ilikeLine} UNION SELECT ${cols}\n` +
-      `        ${"^".padStart(ilikeLine.length + 14)}`
-    );
+    return {
+      kind: "error",
+      message:
+        `ERROR:  syntax error at or near "SELECT"\n` +
+        `DETAIL: Each UNION query must have a FROM clause.\n` +
+        `LINE 1: ${ilikeLine} UNION SELECT ${cols}\n` +
+        `        ${"^".padStart(ilikeLine.length + 14)}`,
+    };
   }
 
-  // -------------------------------------------------------------------------
-  // 5. UNION SELECT … FROM … — check column count and table/column validity
-  // -------------------------------------------------------------------------
+  // ── Step 9: UNION SELECT … FROM … ────────────────────────────────────────
   if (/\bunion\b/.test(q) && /\bselect\b/.test(q) && /\bfrom\b/.test(q)) {
-    const colCount = countSelectedColumns(injectedSql);
     const colMatch = stripped.match(/select(.+?)from/i);
     const cols = colMatch ? colMatch[1].trim().slice(0, 60) : "...";
 
-    // 5a. Wrong column count
+    // Whether the attacker has terminated the query with a comment token.
+    // Without one the DB sees the trailing %' from the ILIKE still appended,
+    // so the query is structurally open — column count is unknowable and the
+    // DB would throw a generic syntax error, not a column mismatch.
+    const hasCommentToken = /--|#|\/\*/.test(injectedSql);
+
+    // 9a. No comment token → query is still open, generic syntax error
+    if (!hasCommentToken) {
+      return {
+        kind: "error",
+        message:
+          `ERROR:  syntax error at or near "%"\n` +
+          `LINE 1: ${ilikeLine}${stripped.slice(0, 40)} %'\n` +
+          `        ${"^".padStart(ilikeLine.length + stripped.slice(0, 40).length + 3)}`,
+      };
+    }
+
+    const colCount = countSelectedColumns(injectedSql);
+
+    // 9b. Wrong column count (only reachable once query is terminated)
     if (colCount !== null && colCount !== REQUIRED_COLUMNS) {
-      return (
-        `ERROR:  each UNION query must have the same number of columns\n` +
-        `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ...\n` +
-        `        ${"^".padStart(ilikeLine.length + 7)}`
-      );
+      return {
+        kind: "error",
+        message:
+          `ERROR:  each UNION query must have the same number of columns\n` +
+          `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ...\n` +
+          `        ${"^".padStart(ilikeLine.length + 7)}`,
+      };
     }
 
-    // 5b. Unknown table
+    // 9b. FROM with nothing after it → syntax error
     const tableMatch = stripped.match(/from\s+(\w+)/i);
-    const table = tableMatch ? tableMatch[1].toLowerCase() : "";
-    const knownTables = ["users", "posts", "notifications"];
-    if (table && !knownTables.includes(table)) {
-      return (
-        `ERROR:  relation "${table}" does not exist\n` +
-        `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ${table}\n` +
-        `        ${"^".padStart(ilikeLine.length + 7 + cols.length + 6 + table.length)}`
-      );
+    if (!tableMatch) {
+      return {
+        kind: "error",
+        message:
+          `ERROR:  syntax error at or near "FROM"\n` +
+          `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM\n` +
+          `        ${"^".padStart(ilikeLine.length + 7 + cols.length + 7)}`,
+      };
     }
 
-    // 5c. Named columns that don't exist on users
+    const table = tableMatch[1].toLowerCase();
+
+    // 9c. Only users and posts exist; everything else is an unknown relation
+    if (table !== "users" && table !== "posts") {
+      return {
+        kind: "error",
+        message:
+          `ERROR:  relation "${table}" does not exist\n` +
+          `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ${table}\n` +
+          `        ${"^".padStart(ilikeLine.length + 7 + cols.length + 6 + table.length)}`,
+      };
+    }
+
+    // 9d. posts → duplicate results to simulate UNION against same table
+    if (table === "posts") {
+      return { kind: "valid", isUnion: "posts" };
+    }
+
+    // 9e. users → validate column names if non-literal columns are used
     const selectBody = colMatch ? colMatch[1] : "";
     const hasOnlyLiterals = /^[\d\s,null']+$/i.test(selectBody);
-    if (!hasOnlyLiterals && table === "users") {
+    if (!hasOnlyLiterals) {
       const colNames = selectBody
         .split(/,(?![^(]*\))/)
         .map((c) => c.trim().split(/\s+/)[0].toLowerCase());
@@ -236,63 +338,21 @@ function getSimulatedSqlError(
         (c) => c && !/^\d+$/.test(c) && !validUserCols.includes(c),
       );
       if (badCol) {
-        return (
-          `ERROR:  column "${badCol}" does not exist\n` +
-          `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ${table}\n` +
-          `        ${"^".padStart(ilikeLine.length + 15 + cols.indexOf(badCol))}`
-        );
+        return {
+          kind: "error",
+          message:
+            `ERROR:  column "${badCol}" does not exist\n` +
+            `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ${table}\n` +
+            `        ${"^".padStart(ilikeLine.length + 15 + cols.indexOf(badCol))}`,
+        };
       }
     }
 
-    // 5d. Type mismatch for non-users/posts tables
-    if (table && table !== "users" && table !== "posts") {
-      return (
-        `ERROR:  UNION types text and integer cannot be matched\n` +
-        `LINE 1: ${ilikeLine} UNION SELECT ${cols} FROM ${table}\n` +
-        `        ${"^".padStart(ilikeLine.length + 7)}`
-      );
-    }
-
-    // 5e. Everything looks valid → no error
-    return null;
+    // 9f. Passes all checks → valid UNION SELECT against users → leak creds
+    return { kind: "valid", isUnion: "users" };
   }
 
-  // -------------------------------------------------------------------------
-  // 6. Miscellaneous errors
-  // -------------------------------------------------------------------------
-
-  // DROP / DELETE / INSERT / UPDATE → permission denied
-  if (/\b(drop|delete|insert|update|truncate|alter|create)\b/.test(q)) {
-    const kw = q.match(
-      /\b(drop|delete|insert|update|truncate|alter|create)\b/,
-    )![1];
-    return (
-      `ERROR:  permission denied for table ${["insert", "update", "delete"].includes(kw) ? "posts" : "unknown"}\n` +
-      `DETAIL: The current user does not have ${kw.toUpperCase()} privileges.`
-    );
-  }
-
-  // Stray semicolon → multiple statements not allowed
-  if (stripped.includes(";")) {
-    return (
-      `ERROR:  cannot insert multiple commands into a prepared statement\n` +
-      `LINE 1: ${ilikeLine}${stripped.slice(0, 30)};\n` +
-      `        ${"^".padStart(ilikeLine.length + stripped.indexOf(";") + 2)}`
-    );
-  }
-
-  // Unmatched parenthesis
-  const openParens = (stripped.match(/\(/g) || []).length;
-  const closeParens = (stripped.match(/\)/g) || []).length;
-  if (openParens !== closeParens) {
-    return (
-      `ERROR:  syntax error at or near "${openParens > closeParens ? "(" : ")"}"\n` +
-      `LINE 1: ${ilikeLine}${stripped.slice(0, 40)}\n` +
-      `        ${"^".padStart(ilikeLine.length + 2)}`
-    );
-  }
-
-  // Generic syntax fallback for unrecognised continuations
+  // ── Step 10: non-UNION continuation ──────────────────────────────────────
   const firstKeyword = q.match(/^(\w+)/)?.[1] ?? "";
   const validContinuations = [
     "and",
@@ -307,33 +367,17 @@ function getSimulatedSqlError(
     "except",
   ];
   if (firstKeyword && !validContinuations.includes(firstKeyword)) {
-    return (
-      `ERROR:  syntax error at or near "${firstKeyword}"\n` +
-      `LINE 1: ${ilikeLine}${stripped.slice(0, 40)}\n` +
-      `        ${"^".padStart(ilikeLine.length + 2)}`
-    );
+    return {
+      kind: "error",
+      message:
+        `ERROR:  syntax error at or near "${firstKeyword}"\n` +
+        `LINE 1: ${ilikeLine}${stripped.slice(0, 40)}\n` +
+        `        ${"^".padStart(ilikeLine.length + 2)}`,
+    };
   }
 
-  return null;
-}
-
-/**
- * Returns true only when the injected SQL contains a complete UNION SELECT
- * with exactly REQUIRED_COLUMNS columns targeting the users table.
- * Comments (including #) are stripped before checking.
- */
-function isCompletedUnionSelectAttempt(injectedSql: string): boolean {
-  const q = stripComments(injectedSql).toLowerCase().replace(/\s+/g, " ");
-  if (
-    !q.includes("union") ||
-    !q.includes("select") ||
-    !q.includes("from") ||
-    !q.includes("users")
-  ) {
-    return false;
-  }
-  const colCount = countSelectedColumns(injectedSql);
-  return colCount === REQUIRED_COLUMNS;
+  // Valid non-UNION continuation (e.g. AND 1=1, OR 1=1, ORDER BY …)
+  return { kind: "valid", isUnion: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -353,48 +397,60 @@ export async function fetchFilteredPosts(
   const { normalQuery, injectedSql, hasApostrophe } =
     splitOnApostrophe(rawQuery);
 
-  // ------------------------------------------------------------------
-  // No apostrophe → plain search, no injection simulation.
-  // ------------------------------------------------------------------
+  // ── No apostrophe → plain search, no injection simulation ────────────────
   if (!hasApostrophe) {
-    const posts = await fetchNormalPosts(rawQuery, sort, currentPage);
+    const posts = await fetchNormalPosts(normalQuery, sort, currentPage);
     if (priv === 1) posts.push(privFlagPost);
     return posts;
   }
 
-  // ------------------------------------------------------------------
-  // Apostrophe present → simulate injected SQL path.
-  // ------------------------------------------------------------------
+  // ── Apostrophe present → evaluate the injected fragment ──────────────────
+  const result = evaluateInjection(normalQuery, injectedSql);
 
-  // Successful UNION injection
-  if (isCompletedUnionSelectAttempt(injectedSql)) {
-    const posts = await fetchNormalPosts(normalQuery, sort, currentPage);
-    const leakedRows: Post[] = FAKE_USERS.map((u) => ({
-      id: 0,
-      title: `${u.username}`,
-      content: `${u.password}`,
-      created_at: `4`,
-      author: "",
-      author_username: "5",
-      author_role: "6",
-      in_review: false,
-      public: true,
-      successful_xss: false,
-    }));
-    return [...posts, ...leakedRows];
+  switch (result.kind) {
+    // Attacker commented out the rest of the query — run normally (no priv flag
+    // because the SQL structure is broken from the DB's perspective).
+    case "commented-out": {
+      const posts = await fetchNormalPosts(normalQuery, sort, currentPage);
+      if (priv === 1) posts.push(privFlagPost);
+      return posts;
+    }
+
+    // Malformed injection → surface the simulated DB error.
+    case "error":
+      throw new Error(result.message);
+
+    // Structurally valid injection.
+    case "valid": {
+      const posts = await fetchNormalPosts(normalQuery, sort, currentPage);
+
+      if (result.isUnion === "users") {
+        // Successful UNION SELECT against users → leak fake credentials.
+        const leakedRows: Post[] = FAKE_USERS.map((u) => ({
+          id: 0,
+          title: `${u.username}`,
+          content: `${u.password}`,
+          created_at: `4`,
+          author: "",
+          author_username: "5",
+          author_role: "6",
+          in_review: false,
+          public: true,
+          successful_xss: false,
+        }));
+        return [...posts, ...leakedRows];
+      }
+
+      if (result.isUnion === "posts") {
+        // UNION SELECT against posts → results appear twice, no credential leak.
+        return [...posts, ...posts];
+      }
+
+      // Non-UNION valid continuation (AND/OR/ORDER BY etc.) — run normally.
+      if (priv === 1) posts.push(privFlagPost);
+      return posts;
+    }
   }
-
-  // Malformed injection → throw a simulated SQL error
-  const sqlError = getSimulatedSqlError(normalQuery, injectedSql);
-  if (sqlError) {
-    throw new Error(sqlError);
-  }
-
-  // Valid-looking but non-exploiting injection (e.g. ' AND 1=1-- -)
-  // Run the query using only the part before the apostrophe.
-  const posts = await fetchNormalPosts(normalQuery, sort, currentPage);
-  if (priv === 1) posts.push(privFlagPost);
-  return posts;
 }
 
 async function fetchNormalPosts(
