@@ -174,12 +174,25 @@ function evaluateInjection(
   const stripped = stripComments(injectedSql);
   const q = stripped.toLowerCase().replace(/\s+/g, " ").trim();
 
-  // ── Step 2: everything commented out → silent pass, not a UNION ──────────
+  // ── Step 2: nothing after the apostrophe at all → unterminated string ───────
+  if (injectedSql.trim() === "") {
+    return {
+      kind: "error",
+      message:
+        `ERROR:  unterminated quoted string at or near "'"\n` +
+        `LINE 1: ${ilikeLine}'\n` +
+        `        ${"^".padStart(ilikeLine.length + 2)}`,
+    };
+  }
+
+  // ── Step 3: everything commented out → silent pass ─────────────────────────
+  // The apostrophe already closed the ILIKE string literal; -- # /**/ etc.
+  // now comment out the trailing %' junk → perfectly valid SQL.
   if (q === "") {
     return { kind: "commented-out" };
   }
 
-  // ── Step 3: second bare apostrophe → unterminated quoted string ───────────
+  // ── Step 4: second bare apostrophe → unterminated quoted string ───────────
   if (injectedSql.includes("'")) {
     const afterSecond = injectedSql.slice(injectedSql.indexOf("'") + 1);
     return {
@@ -191,7 +204,7 @@ function evaluateInjection(
     };
   }
 
-  // ── Step 4: DDL / DML → permission denied ────────────────────────────────
+  // ── Step 5: DDL / DML → permission denied ────────────────────────────────
   if (/\b(drop|delete|insert|update|truncate|alter|create)\b/.test(q)) {
     const kw = q.match(
       /\b(drop|delete|insert|update|truncate|alter|create)\b/,
@@ -204,7 +217,7 @@ function evaluateInjection(
     };
   }
 
-  // ── Step 5: stray semicolon → multiple statements not allowed ─────────────
+  // ── Step 6: stray semicolon → multiple statements not allowed ─────────────
   if (stripped.includes(";")) {
     return {
       kind: "error",
