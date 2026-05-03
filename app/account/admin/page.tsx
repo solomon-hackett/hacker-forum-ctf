@@ -258,7 +258,7 @@ export default async function Page() {
                       <td>{post.created_at}</td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <Link
-                          href={`/posts/${post.id}`}
+                          href={`/posts/${post.id}?redirect=/account/admin`}
                           className="post-action-btn btn-view"
                         >
                           View
