@@ -1,4 +1,5 @@
 import { fetchFilteredPosts } from "@/app/lib/data";
+import { Post } from "@/app/lib/definitions";
 
 export default async function PostGrid({
   query,
@@ -11,7 +12,18 @@ export default async function PostGrid({
   priv: number;
   currentPage: number;
 }) {
-  const posts = await fetchFilteredPosts(query, sort, priv, currentPage);
+  let posts: Post[] = [];
+  let error: string | null = null;
+
+  try {
+    posts = await fetchFilteredPosts(query, sort, priv, currentPage);
+  } catch (e) {
+    if (e instanceof Error) {
+      error = e.message;
+    } else {
+      error = String(e);
+    }
+  }
 
   return (
     <>
@@ -184,7 +196,11 @@ export default async function PostGrid({
       `}</style>
 
       <div className="post-grid">
-        {posts.length === 0 ? (
+        {error ? (
+          <div className="post-empty" style={{ color: "#ff6b6b" }}>
+            <pre>{error}</pre>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="post-empty">
             No posts yet. Be the first to write one.
           </div>
@@ -214,7 +230,6 @@ export default async function PostGrid({
                 </div>
 
                 <hr className="post-divider" />
-
                 <p className="post-content">{post.content}</p>
 
                 <div className="post-footer">
